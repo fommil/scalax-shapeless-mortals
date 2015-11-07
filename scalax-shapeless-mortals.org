@@ -42,7 +42,6 @@ But my favourite project is ENSIME, which is an alternative development environm
 - We are hiring Scala developers!
 - Find their booth outside
 
-
 * About You
 ** Raise your hand if...
 
@@ -58,8 +57,6 @@ You have used shapeless. And I don't mean including it as a transitive dependenc
 Do you understand this quote? Well, fear not Mere Mortal, this talk is for you!
 #+END_NOTES
 
-
-#+BEGIN_QUOTE
 - you use ENSIME
   - hack day tomorrow!
 - you have knowingly used the type class pattern
@@ -68,10 +65,43 @@ Do you understand this quote? Well, fear not Mere Mortal, this talk is for you!
 - you understand:
   - "/A free monad is a free object relative to a forgetful functor whose domain is a category of monads./"
   - *Mere Mortal*, this talk is for you!
-#+END_QUOTE
 
 * Workshop Format
-** TODO TOC
+** Agenda
+
+#+BEGIN_NOTES
+Just to be clear, this talk requires no shapeless experience. In fact, you don't even need to know what a type class is.
+
+We'll start by having a look at our example project, =spray-json-shapeless=. My first experience of Scala was manually creating marshallers for =spray-json= and I was really annoyed because Java has frameworks to automatically do this. So it was a real milestone for me to be able to write this library with Mile's help, as it closed off a major complaint that I had.
+
+Then we'll introduce the fundamentals of shapeless. We can't possibly cover everything that it has to offer, but from here hopefully you'll have the confidence to explore further into what it has to offer.
+
+Then we're going to learn about some bugs in the scala compiler that are probably never going to get fixed in the mainline, but you could make a real difference by joining the Typelevel Scala initiative who have a vested interest in fixing these sorts of things.
+
+Then we're going to look at how to write something like =spray-json-shapeless= from the ground up, and understand every step.
+
+There are going to be several exercises to choose from. If you haven't already cloned the =shapeless-for-mortals= repository, I would suggest that you do so now because then we stand a chance of an =sbt updateClassifiers= being finished in about an hour. Please vote for sbt #1930 if you agree!
+
+The point of this exercise is so that you can build something *useful* when you go back to work on Monday. Shapeless is not just a toy library, generic programming is a real time saver.
+
+We'll then discuss and compare our various solutions and if we have time, I'll show you some of my other favourite bits of shapeless.
+#+END_NOTES
+
+*No shapeless experience required*
+
+1. Running example: =spray-json=
+  - https://github.com/spray/spray-json
+  - https://github.com/fommil/spray-json-shapeless
+2. Shapeless fundamentals
+3. =scala-compiler= workarounds
+  - https://github.com/typelevel/scala
+4. =spray-json-shapeless= step by step
+5. Exercise!
+  - https://github.com/fommil/shapeless-for-mortals
+  - https://github.com/sbt/sbt/issues/1930
+  - goal is for you to can build something *useful*
+6. Solutions
+7. More shapeless
 
 * Running Example
 ** TODO spray-json AST

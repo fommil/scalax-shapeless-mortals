@@ -1,6 +1,9 @@
 /* https://groups.google.com/forum/#!topic/pandoc-discuss/W-Rjzonp8NU  */
 /* https://github.com/hakimel/reveal.js/issues/1237 */
-.reveal h1 { font-size: 1.4em; }
+.reveal h1 {
+    font-size: 1.4em;
+    text-shadow: none;
+}
 .reveal h2 { font-size: 1.2em; }
 .reveal h3 { font-size: 1.1em; }
 .reveal table {

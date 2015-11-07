@@ -5,11 +5,70 @@
 #+TODO: TODO | RESEARCH | NOTES | CHART | DIAGRAM | DRAWING | CODE | VIDEO
 
 * About Me
-** TODO ENSIME
-** TODO Morgan Stanley
+** Sam Halliday =@fommil=
+
+#+BEGIN_NOTES
+I am really an applied mathematician by training, this software thing is really just a hobby that pays the bills.
+
+Before the crash, I did industrial research in digital signal processing, multi-high-dimensional optimisation, quantum mechanics, machine learning and a bunch of other stuff that I could just talk about forever.
+
+I'm really into Free or Libre education and software. When I was a student in Cape Town I was one of the founders of an initiative that eventually became Siyavula and has printed 5 million Free textbooks to students in South Africa.
+
+I'm a fellow of the Free Software Foundation. I believe they do really great things and I'd encourage you to join up even if you don't believe in the GPL. They are doing some great lobbying for all of us against legislation that seeks to undermine our right to use or write Free software, which includes the Apache 2.0 and BSD licenses.
+
+My most used free software project is =netlib-java=, which I spoke about at last year's Scala eXchange. It's included in the Spark Machine Learning library.
+
+My most controversial moment was when I realised that TypeSafe had quietly closed the sources of parts of Slick. In response, I created FreeSlick to encourage a Free alternative. Sue Carter, who spoke earlier today, actually delivered on that.
+
+But my favourite project is ENSIME, which is an alternative development environment to Eclipse and IntelliJ for Scala and now Java.
+
+#+END_NOTES
+
+
+- Chartered Mathematician
+  - DSP, optimisation, quantum, machine learning, etc
+- Free (Libre) Education and Software
+  - 5mil textbooks in South Africa (Siyavula)
+  - FSF Fellow (they fight for BSD / Apache too!)
+  - =netlib-java= (underpinning Spark ML)
+  - FreeSlick
+  - ENSIME core developer
+
+-----
+
+[[./images/morgan-stanley.jpg]]
+
+- Contracting with Morgan Stanley
+- We are hiring Scala developers!
+- Find their booth outside
+
 
 * About You
-** TODO Poll of typeclasses / shapeless / ENSIME
+** Raise your hand if...
+
+#+BEGIN_NOTES
+Enough about me, I'd like to know more about you. So if we could have a show of hands and shout out any thoughts if...
+
+You use ENSIME? Oh nice, you know we have a hack day tomorrow so please come and join us and make it better.
+
+You have knowingly used the type class pattern. I say knowingly because you have probably all used it, but if you're not up on the lingo you might not know that you've used it.
+
+You have used shapeless. And I don't mean including it as a transitive dependency, I mean if you have actually written something with Shapeless. How advanced was it?
+
+Do you understand this quote? Well, fear not Mere Mortal, this talk is for you!
+#+END_NOTES
+
+
+#+BEGIN_QUOTE
+- you use ENSIME
+  - hack day tomorrow!
+- you have knowingly used the type class pattern
+- you have used Shapeless
+  - experienced users, see me after class
+- you understand:
+  - "/A free monad is a free object relative to a forgetful functor whose domain is a category of monads./"
+  - *Mere Mortal*, this talk is for you!
+#+END_QUOTE
 
 * Workshop Format
 ** TODO TOC
@@ -19,17 +78,26 @@
 ** TODO JsonFormat
 
 * Fundamentals
+** WARNING: Idealised
+
+- some code does *not* compile
+- bugs / limitations of =scala-compiler=
+- coming next: workarounds
+
 ** TODO Type Classes
 ** TODO Product
 ** TODO Coproduct
 ** TODO Generic
 ** TODO LabelledGeneric
+*** TODO FieldType and Witness
 
 * Reality Bites
-** TODO Hipster.Aux
+** TODO Hipster.Aux (SI-823)
 
 #+BEGIN_NOTES
-refined types as a workaround to scala bug ??? https://github.com/typelevel/scala/issues/8
+refined types as a workaround to scala bug https://issues.scala-lang.org/browse/SI-823 
+
+https://github.com/typelevel/scala/issues/8
 
 https://github.com/milessabin/shapeless/blob/master/core/src/main/scala/shapeless/generic.scala#L148
 
@@ -38,8 +106,7 @@ https://github.com/ensime/ensime-server/blob/master/sexpress/src/main/scala/org/
 https://gist.github.com/milessabin/cadd73b7756fe4097ca0
 #+END_NOTES
 
-** TODO Witness
-** TODO Higher Kinds SI-2712
+** TODO Higher Kinds (SI-2712)
 
 #+BEGIN_NOTES
 Not directly shapeless related, but it is definitely worth knowing about this if you're doing any generic programming.
@@ -51,9 +118,10 @@ https://github.com/ensime/ensime-server/blob/master/sexpress/src/main/scala/org/
 
 https://github.com/spray/spray-json/blob/master/src/main/scala/spray/json/CollectionFormats.scala
 
+https://meta.plasm.us/posts/2015/07/11/roll-your-own-scala/
 #+END_NOTES
 
-** TODO Implicit Resolution "rules"
+** TODO Implicit Resolution "rules" (SI-7755)
 
 #+BEGIN_NOTES
 refresher of what is searched, but actually that the compiler source code is the real spec.
@@ -75,9 +143,10 @@ don't put domain objects in a parent project (SI-7755)
 ** TODO add customisation
 
 * Your Turn!
-** TODO StringyMap
+** TODO Mortal Enemy: =Map[String, Any]=
 ** TODO or (stripped down) S-Express
 ** TODO or (advanced) features in spray-json-shapeless
+** TODO practicalities: repos
 
 * Solutions
 

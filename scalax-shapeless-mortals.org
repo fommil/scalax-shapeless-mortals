@@ -104,7 +104,28 @@ We'll then discuss and compare our various solutions and if we have time, I'll s
 7. More shapeless
 
 * Running Example
-** TODO spray-json AST
+** spray-json
+
+#+BEGIN_NOTES
+Maybe you are aware of the recent controversy surrounding JSON ASTs in the scala standard library. Well, here are the 8 lines of code that =spray-json= uses to define its AST.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+sealed abstract class JsValue
+
+case class JsObject(fields: Map[String, JsValue]) extends JsValue
+case class JsArray(elements: Vector[JsValue]) extends JsValue
+case class JsString(value: String) extends JsValue
+case class JsNumber(value: BigDecimal) extends JsValue
+
+sealed abstract class JsBoolean extends JsValue
+case object JsTrue extends JsBoolean
+case object JsFalse extends JsBoolean
+
+case object JsNull extends JsValue
+#+END_SRC
+
+
 ** TODO JsonFormat
 
 * Fundamentals

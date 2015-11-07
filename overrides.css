@@ -19,6 +19,7 @@
 .reveal blockquote {
     text-align: justify;
     box-shadow: none;
+    background: none;
 }
 .reveal pre code {
     /** Annoyingly reveal.js sets these explicitly, overriding our pandoc theme */
@@ -38,4 +39,13 @@ ol li ul li {
 
 ul li ul li {
     list-style-type: none;
+}
+
+/** WORKAROUND: https://github.com/jgm/pandoc/issues/1906 */
+#shapeless {
+    width: 1024px;
+    height: 768px;
+	background:url("images/brucelee.jpg");
+	background-position:center;
+    text-align: right;
 }

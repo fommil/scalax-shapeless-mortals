@@ -9,6 +9,7 @@ NOTES=scalax-shapeless-mortals-notes.html
 echo "creating $TALK"
 pandoc --standalone \
        --smart \
+       --parse-raw \
        --write=revealjs \
        --slide-level=2 \
        --variable theme:beige \

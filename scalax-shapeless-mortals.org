@@ -98,21 +98,28 @@ We'll then discuss and compare our various solutions and if we have time, I'll s
 4. =spray-json-shapeless= step by step
 5. Exercise!
   - https://github.com/fommil/shapeless-for-mortals
-  - https://github.com/sbt/sbt/issues/1930
-  - goal is for you to can build something *useful*
-6. Solutions
+6. Discuss solutions
 7. More shapeless
 
 * Running Example
-** spray-json
+** =spray-json=
 
 #+BEGIN_NOTES
-Maybe you are aware of the recent controversy surrounding JSON ASTs in the scala standard library. Well, here are the 8 lines of code that =spray-json= uses to define its AST.
+Maybe you are aware of the recent controversy surrounding JSON ASTs in the scala standard library. Well, here are the 8 core lines of code that =spray-json= uses to define its AST.
+
+The real AST is a little larger than this we're not showing various convenience methods on the companions and suchlike.
+
+Importantly =JsValue= is a =sealed= trait, which means that all of its implementations are defined in this file and known at compile time, and those implementations are all =case class= or =case object=.
+
+It's worth noting that this is what is called a *recursive* data structure: implementations can contain elements that are roots of tree. Looking just at the types, a =JsValue= could be infinitely nested although we know in practice that there are only so many nested =JsValue=s. We will see later that the compiler is not as convinced as we are!
 #+END_NOTES
 
 #+BEGIN_SRC scala
+// note "sealed"
 sealed abstract class JsValue
 
+// note case classes or case objects
+// note recursive types
 case class JsObject(fields: Map[String, JsValue]) extends JsValue
 case class JsArray(elements: Vector[JsValue]) extends JsValue
 case class JsString(value: String) extends JsValue
@@ -125,24 +132,72 @@ case object JsFalse extends JsBoolean
 case object JsNull extends JsValue
 #+END_SRC
 
+** =JsonFormat=
 
-** TODO JsonFormat
+#+BEGIN_NOTES
+Again, I am paraphrasing (in reality this is split into two parts and the implicit classes don't look exactly like this) but this is more or less what the formatting API looks like.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+@implicitNotFound(msg = "Cannot find JsonFormat type class for ${T}")
+trait JsonFormat[T] {
+  def read(json: JsValue): T
+  def write(obj: T): JsValue
+}
+
+implicit class EnrichedAny[T](any: T) {
+  def toJson(implicit f: JsonFormat[T]): JsValue = f.write(any)
+}
+
+implicit class EnrichedJsValue(v: JsValue) {
+  def convertTo[T](implicit f: JsonFormat[T]): T = f.read(v)
+}
+#+END_SRC
 
 * Fundamentals
+** Shapeless
+
+#+BEGIN_NOTES
+https://upload.wikimedia.org/wikipedia/commons/c/cb/Hong_kong_bruce_lee_statue_2.jpg
+
+As far as I am aware, this is the origin of the name shapeless.
+
+So we're actually doing 
+
+#+END_NOTES
+
+#+BEGIN_VERSE
+"Empty your mind, be formless.
+ *Shapeless*, like water.
+ If you put water into a cup, it becomes the cup.
+ If you put water into a bottle, it becomes the bottle.
+ If you put water into a teapot, it becomes the teapot.
+ Water can flow and it can crash.
+ Become like water my friend."
+            -- Bruce Lee
+#+END_VERSE
+
+
 ** WARNING: Idealised
 
 - some code does *not* compile
 - bugs / limitations of =scala-compiler=
 - coming next: workarounds
 
-** TODO Type Classes
+** Type Classes
+#+BEGIN_NOTES
+
+#+END_NOTES
+
+
+
 ** TODO Product
 ** TODO Coproduct
 ** TODO Generic
 ** TODO LabelledGeneric
 *** TODO FieldType and Witness
 
-* Reality Bites
+* Enter the Dragon
 ** TODO Hipster.Aux (SI-823)
 
 #+BEGIN_NOTES

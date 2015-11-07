@@ -1,6 +1,8 @@
 # scalax-shapeless-mortals
 
-Slides for Scala eXchange 2015 "Shapeless for Mortals"
+Slides for Scala eXchange 2015 "Shapeless for Mortals".
+
+The exercises (which the audience are advised to clone in advance) are made available at https://github.com/fommil/shapeless-for-mortals
 
 [Reveal.js](https://github.com/hakimel/reveal.js) is bundled as a submodule. The easiest way to get it is to run this after cloning:
 

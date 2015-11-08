@@ -297,9 +297,9 @@ import labelled._
 import syntax.singleton._
 
 ('a ->> "hello") :: ('b ->> 13L) :: ('c ->> true) :: HNil
-  : String  with KeyTag[Symbol with Tagged["a"]]) ::
-    Long    with KeyTag[Symbol with Tagged["b"]]) ::
-    Boolean with KeyTag[Symbol with Tagged["c"]]) ::
+  : String  with KeyTag[Symbol with Tagged["a"], String]) ::
+    Long    with KeyTag[Symbol with Tagged["b"], Long]) ::
+    Boolean with KeyTag[Symbol with Tagged["c"], Boolean]) ::
     HNil
 #+END_SRC
 
@@ -384,9 +384,9 @@ Let's take a look at an example, our teapot had this type, and we can now just =
 
 #+BEGIN_SRC scala
 val f = implicitly[JsonFormat[
-          String  with KeyTag[Symbol with Tagged["a"]]) ::
-          Long    with KeyTag[Symbol with Tagged["b"]]) ::
-          Boolean with KeyTag[Symbol with Tagged["c"]]) ::
+          String  with KeyTag[Symbol with Tagged["a"], String]) ::
+          Long    with KeyTag[Symbol with Tagged["b"], Long]) ::
+          Boolean with KeyTag[Symbol with Tagged["c"], Boolean]) ::
           HNil]]
 
 val teapot = ('a ->> "hello") :: ('b ->> 13L) :: ('c ->> true) :: HNil
@@ -415,11 +415,11 @@ So to build the typeclass for the entire teapot, 6 other typeclasses are derived
 
 #+BEGIN_SRC
 => JsonFormat[String]
- + JsonFormat[Long    with KeyTag[Symbol with Tagged["b"]]) ::
-              Boolean with KeyTag[Symbol with Tagged["c"]]) ::
+ + JsonFormat[Long    with KeyTag[Symbol with Tagged["b"], Long]) ::
+              Boolean with KeyTag[Symbol with Tagged["c"], Boolean]) ::
               HNil]
 => JsonFormat[Long]
- + JsonFormat[Boolean with KeyTag[Symbol with Tagged["c"]]) ::
+ + JsonFormat[Boolean with KeyTag[Symbol with Tagged["c"], Boolean]) ::
               HNil]
 => JsonFormat[Boolean]
  + JsonFormat[HNil]
@@ -429,6 +429,7 @@ So to build the typeclass for the entire teapot, 6 other typeclasses are derived
 ** TODO Coproduct
 
 * Enter the Dragon
+** TODO Singleton Symbols
 ** TODO Hipster.Aux (SI-823)
 
 #+BEGIN_NOTES

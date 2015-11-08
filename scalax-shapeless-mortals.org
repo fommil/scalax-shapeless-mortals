@@ -4,7 +4,7 @@
 
 #+TODO: TODO | RESEARCH | NOTES | CHART | DIAGRAM | DRAWING | CODE | VIDEO
 
-* About Me
+* Introduction
 ** Sam Halliday =@fommil=
 
 #+BEGIN_NOTES
@@ -42,7 +42,6 @@ But my favourite project is ENSIME, which is an alternative development environm
 - We are hiring Scala developers!
 - Find their booth outside
 
-* About You
 ** Raise your hand if...
 
 #+BEGIN_NOTES
@@ -66,8 +65,7 @@ Do you understand this quote? Well, fear not Mere Mortal, this talk is for you!
   - "/A free monad is a free object relative to a forgetful functor whose domain is a category of monads./"
   - *Mere Mortal*, this talk is for you!
 
-* Workshop Format
-** Agenda
+** Workshop Format
 
 #+BEGIN_NOTES
 Just to be clear, this talk requires no shapeless experience. In fact, you don't even need to know what a type class is.
@@ -102,7 +100,7 @@ We'll then discuss and compare our various solutions and if we have time, I'll s
 7. More shapeless
 
 * Running Example
-** =spray-json=
+** spray-json
 
 #+BEGIN_NOTES
 Maybe you are aware of the recent controversy surrounding JSON ASTs in the scala standard library. Well, here are the 8 core lines of code that =spray-json= uses to define its AST.
@@ -125,14 +123,14 @@ case class JsArray(elements: Vector[JsValue]) extends JsValue
 case class JsString(value: String) extends JsValue
 case class JsNumber(value: BigDecimal) extends JsValue
 
-sealed abstract class JsBoolean extends JsValue
+sealed trait JsBoolean extends JsValue
 case object JsTrue extends JsBoolean
 case object JsFalse extends JsBoolean
 
 case object JsNull extends JsValue
 #+END_SRC
 
-** =JsonFormat=
+** JsonFormat
 
 #+BEGIN_NOTES
 Again, I am paraphrasing (in reality this is split into two parts and the implicit classes don't look exactly like this) but this is more or less what the formatting API looks like.
@@ -177,7 +175,6 @@ So we're actually doing
             -- Bruce Lee
 #+END_VERSE
 
-
 ** WARNING: Idealised
 
 - some code does *not* compile
@@ -190,6 +187,55 @@ So we're actually doing
 #+END_NOTES
 
 
+
+#+BEGIN_NOTES
+What is a typeclass?
+
+We've already seen a typeclass, its just a trait that has a type parameter. In the typeclass pattern, we call this the interface.
+
+And specific implementations are, unsurprisingly, known as implementations. Typically there is only one implementation for each type. Here we can see an implementation for =String=. Although, hopefully the potential for mocking during testing is obvious.
+
+Its worth noting that =spray-json= throws exceptions in the case of failure, e.g. if the JSON is the wrong shape, which is possible because there is no validation of the JSON. This is actually bad practice, primarily because of the performance overhead --- it's quite costly to generate an exception. It would have been higher performance if the type signature of read was to return an =Either=.
+
+The biggest practical benefit of the typeclass pattern, as I see it, is that the implementation for a type is kept separate from the type's source code. This is particularly important for objects that you do not own, like standard library objects, but it also helps you to keep your own domain model extremely clean.
+
+Since I've started writing Scala, without a doubt the best thing I've ever done in a codebase was to put the domain model --- the messages in and out of the system --- into a single file of sealed traits and case classes. That file becomes the public API, it is heavily documented and discussed / agreed with the downstream consumers and the business / data modellers. It is extremely valuable for everybody involved to have a *codex*.
+
+And then we have the optional "syntax", which is really just style. Some people don't like using the implicit syntax.
+
+Importantly, if the =implicit class= =extends AnyVal= then there is no runtime performance overhead to using the enriched syntax. But it may slow down your compiles a little bit.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+trait JsonFormat[T] {
+  def read(json: JsValue): T
+  def write(obj: T): JsValue
+}
+#+END_SRC
+
+. . .
+
+#+BEGIN_SRC scala
+implicit object StringJsonFormat extends JsonFormat[String] {
+  def read(value: JsValue) = value match {
+    case JsString(x) => x
+    case other => throw new DeserializationError(other) // sic
+  } // Either[String, T]
+  def write(x: String) = JsString(x)
+}
+#+END_SRC
+
+. . .
+
+#+BEGIN_SRC scala
+implicit class EnrichedAny[T](val any: T) extends AnyVal {
+  def toJson(implicit f: JsonFormat[T]): JsValue = f.write(any)
+}
+
+implicit class EnrichedJsValue(val v: JsValue) extends AnyVal {
+  def convertTo[T](implicit f: JsonFormat[T]): T = f.read(v)
+}
+#+END_SRC
 
 ** TODO Product
 ** TODO Coproduct

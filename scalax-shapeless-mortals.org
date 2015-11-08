@@ -289,16 +289,18 @@ case class Teacup(a: String, b: Long, c: Boolean)
 . . .
 
 #+BEGIN_NOTES
-We don't use tuples because =FieldType= has been designed exactly for this purpose within shapeless:
+We don't use tuples because =FieldType= has been designed exactly for this purpose within shapeless. This makes use of singleton =Symbol=, where the type of each symbol is given its own unique type:
 #+END_NOTES
 
 #+BEGIN_SRC scala
-import shapeless.labelled._
-type V[T] = FieldType[Symbol, T]
+import labelled._
+import syntax.singleton._
 
-// FIXME: the symbol is in the type here, need to know how to create one
-
-V[String] :: V[Long] :: V[Boolean] :: HNil
+('a ->> "hello") :: ('b ->> 13L) :: ('c ->> true) :: HNil
+  : String  with KeyTag[Symbol with Tagged["a"]]) ::
+    Long    with KeyTag[Symbol with Tagged["b"]]) ::
+    Boolean with KeyTag[Symbol with Tagged["c"]]) ::
+    HNil
 #+END_SRC
 
 -----
@@ -375,24 +377,56 @@ We have to return an =HList= so we simply cat this =FieldType= onto the existing
 -----
 
 #+BEGIN_NOTES
-that's it! We've done it. We've written a formatter for *all* =HLists= of =FieldType=.
+That's it! We've done it. We've written a =JsonFormat= for *all* =HLists= of =FieldType=.
+
+Let's take a look at an example, our teacup had this type, and we can now just =implicitly= derive a =JsonFormat=.
 #+END_NOTES
 
 #+BEGIN_SRC scala
-// FIXME: needs singleton types added
-implicitly[JsonFormat[V[String] :: V[Long] :: V[Boolean] :: HNil]]
+val f = implicitly[JsonFormat[
+          String  with KeyTag[Symbol with Tagged["a"]]) ::
+          Long    with KeyTag[Symbol with Tagged["b"]]) ::
+          Boolean with KeyTag[Symbol with Tagged["c"]]) ::
+          HNil]]
+
+val teacup = ('a ->> "hello") :: ('b ->> 13L) :: ('c ->> true) :: HNil
+val expected = "{'a': 'hello', 'b': 13, 'c': true}".parseJson
+
+f.write(teacup) shouldBe expected
+f.read(expected) shouldBe teacup 
 #+END_SRC
 
 . . .
 
+#+BEGIN_NOTES
+So how does implicit resolution work?
+
+When you ask for the implicit =JsonFormat= of the teacup's =HList=.
+
+The typeclass for =String= is obtained, and the typeclass for the tail of the =HList=.
+
+Then the typeclass for =Long= is obtained, along with the increasingly smaller tail.
+
+Then finally the =Boolean= typeclass and the list terminator, =HNil=.
+
+So to build the typeclass for the entire teacup, 6 other typeclasses are derived and their references stored in the resulting object.
+#+END_NOTES
 
 
+#+BEGIN_SRC
+=> JsonFormat[String]
+ + JsonFormat[Long    with KeyTag[Symbol with Tagged["b"]]) ::
+              Boolean with KeyTag[Symbol with Tagged["c"]]) ::
+              HNil]
+=> JsonFormat[Long]
+ + JsonFormat[Boolean with KeyTag[Symbol with Tagged["c"]]) ::
+              HNil]
+=> JsonFormat[Boolean]
+ + JsonFormat[HNil]
+#+END_SRC
 
-
-** TODO Coproduct
-** TODO Generic
 ** TODO LabelledGeneric
-*** TODO FieldType and Witness
+** TODO Coproduct
 
 * Enter the Dragon
 ** TODO Hipster.Aux (SI-823)

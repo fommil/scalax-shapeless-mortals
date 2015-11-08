@@ -192,18 +192,6 @@ So we're actually doing
 What is a typeclass?
 
 We've already seen a typeclass, its just a trait that has a type parameter. In the typeclass pattern, we call this the interface.
-
-And specific implementations are, unsurprisingly, known as implementations. Typically there is only one implementation for each type. Here we can see an implementation for =String=. Although, hopefully the potential for mocking during testing is obvious.
-
-Its worth noting that =spray-json= throws exceptions in the case of failure, e.g. if the JSON is the wrong shape, which is possible because there is no validation of the JSON. This is actually bad practice, primarily because of the performance overhead --- it's quite costly to generate an exception. It would have been higher performance if the type signature of read was to return an =Either=.
-
-The biggest practical benefit of the typeclass pattern, as I see it, is that the implementation for a type is kept separate from the type's source code. This is particularly important for objects that you do not own, like standard library objects, but it also helps you to keep your own domain model extremely clean.
-
-Since I've started writing Scala, without a doubt the best thing I've ever done in a codebase was to put the domain model --- the messages in and out of the system --- into a single file of sealed traits and case classes. That file becomes the public API, it is heavily documented and discussed / agreed with the downstream consumers and the business / data modellers. It is extremely valuable for everybody involved to have a *codex*.
-
-And then we have the optional "syntax", which is really just style. Some people don't like using the implicit syntax.
-
-Importantly, if the =implicit class= =extends AnyVal= then there is no runtime performance overhead to using the enriched syntax. But it may slow down your compiles a little bit.
 #+END_NOTES
 
 #+BEGIN_SRC scala
@@ -214,6 +202,17 @@ trait JsonFormat[T] {
 #+END_SRC
 
 . . .
+
+#+BEGIN_NOTES
+And specific implementations are, unsurprisingly, known as implementations. Typically there is only one implementation for each type. Here we can see an implementation for =String=. Although, hopefully the potential for mocking during testing is obvious.
+
+Its worth noting that =spray-json= throws exceptions in the case of failure, e.g. if the JSON is the wrong shape, which is possible because there is no validation of the JSON. This is actually bad practice, primarily because of the performance overhead --- it's quite costly to generate an exception. It would have been higher performance if the type signature of read was to return an =Either=.
+
+The biggest practical benefit of the typeclass pattern, as I see it, is that the implementation for a type is kept separate from the type's source code. This is particularly important for objects that you do not own, like standard library objects, but it also helps you to keep your own domain model extremely clean.
+
+Since I've started writing Scala, without a doubt the best thing I've ever done in a codebase was to put the domain model --- the messages in and out of the system --- into a single file of sealed traits and case classes. That file becomes the public API, it is heavily documented and discussed / agreed with the downstream consumers and the business / data modellers. It is extremely valuable for everybody involved to have a *codex*.
+#+END_NOTES
+
 
 #+BEGIN_SRC scala
 implicit object StringJsonFormat extends JsonFormat[String] {
@@ -227,6 +226,12 @@ implicit object StringJsonFormat extends JsonFormat[String] {
 
 . . .
 
+#+BEGIN_NOTES
+And then we have the optional "syntax", which is really just style. Some people don't like using the implicit syntax.
+
+Importantly, if the =implicit class= =extends AnyVal= then there is no runtime performance overhead to using the enriched syntax. But it may slow down your compiles a little bit.
+#+END_NOTES
+
 #+BEGIN_SRC scala
 implicit class EnrichedAny[T](val any: T) extends AnyVal {
   def toJson(implicit f: JsonFormat[T]): JsValue = f.write(any)
@@ -237,7 +242,153 @@ implicit class EnrichedJsValue(val v: JsValue) extends AnyVal {
 }
 #+END_SRC
 
-** TODO Product
+** Product
+
+#+BEGIN_NOTES
+The name =Product= is already taken by the standard library, so shapeless uses the =HList= instead, short for "heterogeneous list".
+
+This is basically exactly the same data structure as a normal list, except each element type can be different and both the types of the elements and the size of the list are known at compile time.
+#+END_NOTES
+
+=HList=
+
+#+BEGIN_SRC scala
+import shapeless._
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+Here we have an instance of an =HList= with =String=, =Long= and =Boolean= elements, which has type =String :: Long :: Boolean :: HNil=. You'll note that the type signature is extremely verbose, but contains everything that you'd want. The syntax for constructing the instance is almost identical to a normal =List=.
+#+END_NOTES
+
+
+#+BEGIN_SRC scala
+"hello" :: 13L :: true :: HNil
+                              : String :: Long :: Boolean :: HNil
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+And we can have more complex data structures. Let's say we have a data structure that is more like this, repeating key/values. This is now starting to look more like the contents of a case class, right?
+#+END_NOTES
+
+
+#+BEGIN_SRC scala
+('a -> "hello") :: ('b -> 13L) :: ('c -> true) :: HNil
+  : (Symbol, String) :: (Symbol, Long) :: (Symbol, Boolean) :: HNil
+#+END_SRC
+
+. . .
+
+#+BEGIN_SRC scala
+case class Teacup(a: String, b: Long, c: Boolean)
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+We don't use tuples because =FieldType= has been designed exactly for this purpose within shapeless:
+#+END_NOTES
+
+#+BEGIN_SRC scala
+import shapeless.labelled._
+type V[T] = FieldType[Symbol, T]
+
+// FIXME: the symbol is in the type here, need to know how to create one
+
+V[String] :: V[Long] :: V[Boolean] :: HNil
+#+END_SRC
+
+-----
+
+#+BEGIN_NOTES
+Let's do something useful. Let's write a =spray-json= marshaller for *all* =HLists= of =FieldType=. Completely independent of shape, the =HList= is our teacup and we are becoming the teacup.
+
+We'll start with the empty HList, =HNil=, because we'll need it later. Let's make it implicit so that we don't need to pass it explicitly when needed.
+
+We could do some validation here if we wanted, to make sure that the =JsValue= is empty, but here we're deciding that we're ignoring irrelevant information.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+implicit object HNilFormat extends JsonFormat[HNil] {
+  def read(j: JsValue) = HNil
+  def write(n: HNil) = JsObject.empty
+}
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+This is starting to look scary. So lets break it down. We'll start with the type parameters, we're defining three types here: =Key= is the symbol, or name, part of the head of the =FieldType= with corresponding =Value=. The =Remaining= type is an =HList= for the tail.
+
+In the implicit parameter list we're saying that we'd like the compiler to provide us with the key (a witness is a mechanism to resolve singletons, i.e. this exact symbol), the =JsonFormat= for the head value, and a =JsonFormat= for the tail.
+
+We then declare that we can return a =JsonFormat= for the full =HList=.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+implicit def hListFormat[Key <: Symbol, Value, Remaining <: HList](
+  implicit
+  key: Witness[Key],
+  jfh: JsonFormat[Value],
+  jft: JsonFormat[Remaining]
+): JsonFormat[FieldType[Key, Value] :: Remaining] = {
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+The rest is just simple machinery, but I hope you'll forgive me for some shortcuts in dealing with error conditions to keep the code simple.
+
+Firstly, we use the =JsonFormat= for the tail on the tail, expecting a =JsObject=. Then we simply append the key's name and the rendered value. 
+#+END_NOTES
+
+#+BEGIN_SRC scala
+  def write(hlist: FieldType[Key, Value] :: Remaining) = {
+    jft.write(hlist.tail).asJsObject + (key.value -> jfh.write(hlist.head))
+  }
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+The reader is equally simple, we start by rendering the tail of the =HList= by simply passing through the entire =JsValue=. Then we use the key to get the value out of the JSON, and render it.
+
+We have to return an =HList= so we simply cat this =FieldType= onto the existing =HList= using this =field= syntax which takes the singleton =Key= type as a type parameter.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+  def read(json: JsValue) = json match {
+    case JsObject(map) =>
+       val remaining = jft.read(map)
+       val value = map.get(key.value).getOrElse(deserializationError(json))
+       val resolved = jfh.read(value)
+       field[Key](resolved) :: remaining
+
+    case _ => deserializationError(json)
+  }
+}
+#+END_SRC
+
+-----
+
+#+BEGIN_NOTES
+that's it! We've done it. We've written a formatter for *all* =HLists= of =FieldType=.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+// FIXME: needs singleton types added
+implicitly[JsonFormat[V[String] :: V[Long] :: V[Boolean] :: HNil]]
+#+END_SRC
+
+. . .
+
+
+
+
+
 ** TODO Coproduct
 ** TODO Generic
 ** TODO LabelledGeneric

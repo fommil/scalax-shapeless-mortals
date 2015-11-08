@@ -242,15 +242,15 @@ implicit class EnrichedJsValue(val v: JsValue) extends AnyVal {
 }
 #+END_SRC
 
-** Product
+# WORKAROUND https://github.com/jgm/pandoc/issues/2504
+** TODO Singleton Symbols
+** ​ +Product+ HList
 
 #+BEGIN_NOTES
 The name =Product= is already taken by the standard library, so shapeless uses the =HList= instead, short for "heterogeneous list".
 
 This is basically exactly the same data structure as a normal list, except each element type can be different and both the types of the elements and the size of the list are known at compile time.
 #+END_NOTES
-
-=HList=
 
 #+BEGIN_SRC scala
 import shapeless._

@@ -283,7 +283,7 @@ And we can have more complex data structures. Let's say we have a data structure
 . . .
 
 #+BEGIN_SRC scala
-case class Teacup(a: String, b: Long, c: Boolean)
+case class Teapot(a: String, b: Long, c: Boolean)
 #+END_SRC
 
 . . .
@@ -306,7 +306,7 @@ import syntax.singleton._
 -----
 
 #+BEGIN_NOTES
-Let's do something useful. Let's write a =spray-json= marshaller for *all* =HLists= of =FieldType=. Completely independent of shape, the =HList= is our teacup and we are becoming the teacup.
+Let's do something useful. Let's write a =spray-json= marshaller for *all* =HLists= of =FieldType=. Completely independent of shape, the =HList= is our teapot and we are becoming the teapot.
 
 We'll start with the empty HList, =HNil=, because we'll need it later. Let's make it implicit so that we don't need to pass it explicitly when needed.
 
@@ -379,7 +379,7 @@ We have to return an =HList= so we simply cat this =FieldType= onto the existing
 #+BEGIN_NOTES
 That's it! We've done it. We've written a =JsonFormat= for *all* =HLists= of =FieldType=.
 
-Let's take a look at an example, our teacup had this type, and we can now just =implicitly= derive a =JsonFormat=.
+Let's take a look at an example, our teapot had this type, and we can now just =implicitly= derive a =JsonFormat=.
 #+END_NOTES
 
 #+BEGIN_SRC scala
@@ -389,11 +389,11 @@ val f = implicitly[JsonFormat[
           Boolean with KeyTag[Symbol with Tagged["c"]]) ::
           HNil]]
 
-val teacup = ('a ->> "hello") :: ('b ->> 13L) :: ('c ->> true) :: HNil
+val teapot = ('a ->> "hello") :: ('b ->> 13L) :: ('c ->> true) :: HNil
 val expected = "{'a': 'hello', 'b': 13, 'c': true}".parseJson
 
-f.write(teacup) shouldBe expected
-f.read(expected) shouldBe teacup 
+f.write(teapot) shouldBe expected
+f.read(expected) shouldBe teapot 
 #+END_SRC
 
 . . .
@@ -401,7 +401,7 @@ f.read(expected) shouldBe teacup
 #+BEGIN_NOTES
 So how does implicit resolution work?
 
-When you ask for the implicit =JsonFormat= of the teacup's =HList=.
+When you ask for the implicit =JsonFormat= of the teapot's =HList=.
 
 The typeclass for =String= is obtained, and the typeclass for the tail of the =HList=.
 
@@ -409,7 +409,7 @@ Then the typeclass for =Long= is obtained, along with the increasingly smaller t
 
 Then finally the =Boolean= typeclass and the list terminator, =HNil=.
 
-So to build the typeclass for the entire teacup, 6 other typeclasses are derived and their references stored in the resulting object.
+So to build the typeclass for the entire teapot, 6 other typeclasses are derived and their references stored in the resulting object.
 #+END_NOTES
 
 

@@ -177,16 +177,34 @@ So we're actually doing
 
 ** WARNING: Idealised
 
-- some code does *not* compile
-- bugs / limitations of =scala-compiler=
-- coming next: workarounds
-
-** Type Classes
 #+BEGIN_NOTES
+Before we start, this is a disclaimer. For this entire section, we're going to write some code that just simply doesn't compile because of bugs or non-obvious limitations in the scala compiler.
 
+For ten minutes, let's pretend we're running on the perfect TypeLevel compiler.
+
+Once we cover the basics, we're going to revisit every lie and introduce the workarounds.
+
+I know its a weird way to do it, but I want you to get generic programming first, and then the implementation details later.
 #+END_NOTES
 
+- some code does *not* compile
+- bugs / limitations of =scala-compiler=
+- for 10 mins, we're running TypeLevel =scalac= 3.0
+- coming next: workarounds
 
+. . .
+
+#+BEGIN_NOTES
+And for everything that you're going to see from here, we're using these global import rules.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+
+import shapeless._, labelled._, syntax.singleton._
+
+#+END_SRC
+
+** Type Classes
 
 #+BEGIN_NOTES
 What is a typeclass?
@@ -243,64 +261,120 @@ implicit class EnrichedJsValue(val v: JsValue) extends AnyVal {
 #+END_SRC
 
 # WORKAROUND https://github.com/jgm/pandoc/issues/2504
-** TODO Singleton Symbols
+
+** Singleton Types
+
+#+BEGIN_NOTES
+You've probably heard of "the typelevel", well what is meant by that is that things are done with types instead of values.
+
+Shapeless introduces the concept of a singleton type, which is like a bridge between *constant* values and types. The scala compiler has supported this for a long time internally, but there is no syntactic way to get at it without shapeless (or your own macro / compiler plugin).
+
+In these examples, we create primitive values and /narrow/ them. The type of the value is a subtype of the original value, but it is refined with a singleton instance of the type. So =42= has a type that is loosely "the 42nd Int".
+
+All these narrowings get erased at runtime, which is why we're allowed to talk about subtypes of types that are explicitly =final= or primitive in the Java standard library.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+"bar".narrow : String("bar") // <: String
+42.narrow    : Int(42)       // <: Int
+'foo.narrow  : Symbol('foo)  // <: Symbol
+true.narrow  : Boolean(true) // <: Boolean
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+Incidentally, you already know what this concept is.
+
+Think about =objects= , like the empty List =Nil=. Their singleton type is just their own type.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+Nil.narrow   : Nil.type
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+Shapeless also lets you assign a singleton type to a value with this "labelled" syntax. Here the "bar", =42= and =true= are still String, Int and Boolean respectively, but their type also mixes in a singleton symbol.
+
+Actually, you don't have to use =Symbol= on the left hand side, but it is the only thing we're going to use for the remainder of the lesson.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+'a ->> "bar" : String  with KeyTag[Symbol('a), String]
+'b ->> 42    : Int     with KeyTag[Symbol('b), Int]
+'c ->> true  : Boolean with KeyTag[Symbol('c), Boolean]
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+And it works the other way too, we can start from the typelevel and move to the value level. We do that via a =Witness=. If we have a witness for a singleton type in scope, we can grab it and ask for its value.
+
+Thankfully, shapeless creates witnesses for us automatically.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+val foo    = implicitly[Witness[String("foo")]].value  : String("foo")
+val answer = implicitly[Witness[Int(42]]].value        : Int(42)
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+Using typelevel keys is so popular that there is a convenience method that uses the singleton type rather than the value to create a type called a =FieldType=, which is actually just a type alias to the =KeyTag= mixin above, but avoids the repetition.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+field[Symbol('a)]("bar") : FieldType[Symbol('a), String]  // <: String
+field[Symbol('b)](42)    : FieldType[Symbol('b), Int]     // <: Int
+field[Symbol('c)](true)  : FieldType[Symbol('c), Boolean] // <: Boolean
+#+END_SRC
+
+
 ** ​ +Product+ HList
 
 #+BEGIN_NOTES
-The name =Product= is already taken by the standard library, so shapeless uses the =HList= instead, short for "heterogeneous list".
+The name =Product= is already taken by the standard library, so shapeless uses the name =HList= instead, short for "heterogeneous list".
 
 This is basically exactly the same data structure as a normal list, except each element type can be different and both the types of the elements and the size of the list are known at compile time.
+
+Here we have an instance of an =HList= with =String=, =Int= and =Boolean= elements, which has type =String :: Int :: Boolean :: HNil=. You'll note that the type signature is extremely verbose, but contains everything that you'd want. The syntax for constructing the instance is almost identical to a normal =List=.
 #+END_NOTES
-
-#+BEGIN_SRC scala
-import shapeless._
-#+END_SRC
-
-. . .
-
-#+BEGIN_NOTES
-Here we have an instance of an =HList= with =String=, =Long= and =Boolean= elements, which has type =String :: Long :: Boolean :: HNil=. You'll note that the type signature is extremely verbose, but contains everything that you'd want. The syntax for constructing the instance is almost identical to a normal =List=.
-#+END_NOTES
-
 
 #+BEGIN_SRC scala
 "hello" :: 13L :: true :: HNil
-                              : String :: Long :: Boolean :: HNil
+                              : String :: Int :: Boolean :: HNil
 #+END_SRC
 
 . . .
 
 #+BEGIN_NOTES
-And we can have more complex data structures. Let's say we have a data structure that is more like this, repeating key/values. This is now starting to look more like the contents of a case class, right?
-#+END_NOTES
+We can have more complex data structures. Let's say we have a data structure that is more like this, using the labelled values from the previous slide.
 
+This is now starting to look more like the contents of a case class, right?
 
-#+BEGIN_SRC scala
-('a -> "hello") :: ('b -> 13L) :: ('c -> true) :: HNil
-  : (Symbol, String) :: (Symbol, Long) :: (Symbol, Boolean) :: HNil
-#+END_SRC
-
-. . .
-
-#+BEGIN_SRC scala
-case class Teapot(a: String, b: Long, c: Boolean)
-#+END_SRC
-
-. . .
-
-#+BEGIN_NOTES
-We don't use tuples because =FieldType= has been designed exactly for this purpose within shapeless. This makes use of singleton =Symbol=, where the type of each symbol is given its own unique type:
+It's also a subtype of the unlabelled =HList= above.
 #+END_NOTES
 
 #+BEGIN_SRC scala
-import labelled._
-import syntax.singleton._
-
 ('a ->> "hello") :: ('b ->> 13L) :: ('c ->> true) :: HNil
-  : String  with KeyTag[Symbol with Tagged["a"], String]) ::
-    Long    with KeyTag[Symbol with Tagged["b"], Long]) ::
-    Boolean with KeyTag[Symbol with Tagged["c"], Boolean]) ::
-    HNil
+                              : FieldType[Symbol('a), String] ::
+                                FieldType[Symbol('b), Int] ::
+                                FieldType[Symbol('c), Boolean] ::
+                                HNil
+                          // <: String :: Int :: Boolean :: HNil
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+Our =HList= is the water that becomes the teapot...
+#+END_NOTES
+
+#+BEGIN_SRC scala
+case class Teapot(a: String, b: Int, c: Boolean)
 #+END_SRC
 
 -----
@@ -316,14 +390,14 @@ We could do some validation here if we wanted, to make sure that the =JsValue= i
 #+BEGIN_SRC scala
 implicit object HNilFormat extends JsonFormat[HNil] {
   def read(j: JsValue) = HNil
-  def write(n: HNil) = JsObject.empty
+  def write(n: HNil) = JsObject()
 }
 #+END_SRC
 
 . . .
 
 #+BEGIN_NOTES
-This is starting to look scary. So lets break it down. We'll start with the type parameters, we're defining three types here: =Key= is the symbol, or name, part of the head of the =FieldType= with corresponding =Value=. The =Remaining= type is an =HList= for the tail.
+This is starting to look scary. So lets break it down. We'll start with the type parameters, we're defining three types here: =Key= is the singleton symbol part of the head of the =HList= with corresponding =Value=. The =Remaining= type is an =HList= for the tail.
 
 In the implicit parameter list we're saying that we'd like the compiler to provide us with the key (a witness is a mechanism to resolve singletons, i.e. this exact symbol), the =JsonFormat= for the head value, and a =JsonFormat= for the tail.
 
@@ -348,9 +422,9 @@ Firstly, we use the =JsonFormat= for the tail on the tail, expecting a =JsObject
 #+END_NOTES
 
 #+BEGIN_SRC scala
-  def write(hlist: FieldType[Key, Value] :: Remaining) = {
-    jft.write(hlist.tail).asJsObject + (key.value -> jfh.write(hlist.head))
-  }
+  def write(hlist: FieldType[Key, Value] :: Remaining) =
+    jft.write(hlist.tail).asJsObject +
+      (key.value -> jfh.write(hlist.head))
 #+END_SRC
 
 . . .
@@ -362,14 +436,11 @@ We have to return an =HList= so we simply cat this =FieldType= onto the existing
 #+END_NOTES
 
 #+BEGIN_SRC scala
-  def read(json: JsValue) = json match {
-    case JsObject(map) =>
-       val tail = jft.read(json)
-       val value = map.get(key.value).getOrElse(deserializationError(json))
-       val head = jfh.read(value)
-       field[Key](head) :: tail
-
-    case _ => deserializationError(json)
+  def read(json: JsValue) = {
+     val fields = json.asJsObject.fields
+     val head = jfh.read(fields(key.value))
+     val tail = jft.read(json)
+     field[Key](head) :: tail
   }
 }
 #+END_SRC
@@ -384,9 +455,9 @@ Let's take a look at an example, our teapot had this type, and we can now just =
 
 #+BEGIN_SRC scala
 val f = implicitly[JsonFormat[
-          String  with KeyTag[Symbol with Tagged["a"], String]) ::
-          Long    with KeyTag[Symbol with Tagged["b"], Long]) ::
-          Boolean with KeyTag[Symbol with Tagged["c"], Boolean]) ::
+          FieldType[Symbol('a), String] ::
+          FieldType[Symbol('b), Int] ::
+          FieldType[Symbol('c), Boolean] ::
           HNil]]
 
 val teapot = ('a ->> "hello") :: ('b ->> 13L) :: ('c ->> true) :: HNil
@@ -405,7 +476,7 @@ When you ask for the implicit =JsonFormat= of the teapot's =HList=.
 
 The typeclass for =String= is obtained, and the typeclass for the tail of the =HList=.
 
-Then the typeclass for =Long= is obtained, along with the increasingly smaller tail.
+Then the typeclass for =Int= is obtained, along with the increasingly smaller tail.
 
 Then finally the =Boolean= typeclass and the list terminator, =HNil=.
 
@@ -415,11 +486,11 @@ So to build the typeclass for the entire teapot, 6 other typeclasses are derived
 
 #+BEGIN_SRC
 => JsonFormat[String]
- + JsonFormat[Long    with KeyTag[Symbol with Tagged["b"], Long]) ::
-              Boolean with KeyTag[Symbol with Tagged["c"], Boolean]) ::
+ + JsonFormat[FieldType[Symbol('b), Int] ::
+              FieldType[Symbol('c), Boolean] ::
               HNil]
-=> JsonFormat[Long]
- + JsonFormat[Boolean with KeyTag[Symbol with Tagged["c"], Boolean]) ::
+=> JsonFormat[Int]
+ + JsonFormat[FieldType[Symbol('c), Boolean] ::
               HNil]
 => JsonFormat[Boolean]
  + JsonFormat[HNil]

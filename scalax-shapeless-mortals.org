@@ -497,8 +497,7 @@ So to build the typeclass for the entire teapot, 6 other typeclasses are derived
 #+END_SRC
 
 ** TODO LabelledGeneric
-** TODO Coproduct
-
+** TODO ​ +CohList+ Coproduct
 * Enter the Dragon
 ** TODO Singleton Symbols
 ** TODO Hipster.Aux (SI-823)

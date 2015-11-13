@@ -498,7 +498,85 @@ So to build the typeclass for the entire teapot, 6 other typeclasses are derived
  + JsonFormat[HNil]
 #+END_SRC
 
-** TODO LabelledGeneric
+** LabelledGeneric
+
+#+BEGIN_NOTES
+Well, that's great if you rewrite your application to use =HList= everywhere, but in the real world people use =case class= a lot.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+val hlist = ('a ->> "hello") :: ('b ->> 1) :: ('c ->> true) :: HNil
+#+END_SRC
+
+. . .
+
+#+BEGIN_SRC scala
+case class Teapot(a: String, b: Int, c: Boolean)
+
+val teapot = Teapot("hello", 1, true)
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+Thankfully, those smart chaps at shapeless figured this would be the case and they created =LabelledGeneric= so that for any =case class= you can come up with, you can convert between them.
+
+The generic has a type field called =Repr= (short for representation) which gives us the equivalent =HList= type that we should now be familiar with.
+
+Remember that the type information is erased at runtime, so when you convert the =case class= into an =HList=, at runtime it will not have the labels... the labels are a purely compile time thing and are accessed via witnesses, like we seen earlier.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+val generic = LabelledGeneric[Teapot]
+
+generic.Repr : FieldType[Symbol('a), String] ::
+               FieldType[Symbol('b), Int] ::
+               FieldType[Symbol('c), Boolean] ::
+               HNil
+
+generic.from(hlist) shouldBe teapot
+
+generic.to(teapot) shouldBe hlist
+#+END_SRC
+
+-----
+
+#+BEGIN_NOTES
+This means we can trivially turn our =HList= marshaller into a =case class= marshaller!
+
+Just for fun, I've introduced another neat feature of shapeless. Even if you don't use any of this type class derivation, I would encourage you to start using =Typeable=. It's a very simple thing, shapeless always makes one available if you ask for it and all it does is give you a way of getting the name of the compile-time type. Here, we're using it to log out when an instance of the =familyFormat= is instantiated. This can be useful for help track down what you need to cache for performance.
+
+All we do in the implementation is go from/to case classes and HLists, passing off to the =HList= implementation that we wrote earlier.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+implicit def familyFormat[T](
+  implicit
+  gen: LabelledGeneric[T],
+  sg: JsonFormat[T.Repr],
+  tpe: Typeable[T]
+): JsonFormat[T] = new JsonFormat[T] {
+  if (log.isTraceEnabled)
+    log.trace(s"creating ${tpe.describe}")
+
+  def read(j: JsValue): T = gen.from(sg.read(j))
+  def write(t: T): JsValue = sg.write(gen.to(t))
+}
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+And speaking of caching, we can use another little shapeless feature called =cachedImplicit= to obtain and cache an implicit value, thereby avoiding needless object creation. Otherwise, this method is called, and all its dependencies calculated afresh, every time it is invoked.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+implicit val TeapotJsonFormat = cachedImplicit[Teapot]
+
+teapot.toJson // {"a": "hello", "b": 1, "c": true}
+#+END_SRC
+
+
 ** TODO ​ +CohList+ Coproduct
 * Enter the Dragon
 ** TODO Singleton Symbols

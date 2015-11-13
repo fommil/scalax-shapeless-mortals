@@ -62,7 +62,7 @@ Do you understand this quote? Well, fear not Mere Mortal, this talk is for you!
 - you have used Shapeless
   - experienced users, see me after class
 - you understand:
-  - "/A free monad is a free object relative to a forgetful functor whose domain is a category of monads./"
+  - "/A free monad is a free object relative to a forgetful functor whose domain is a category of minds./"
   - *Mere Mortal*, this talk is for you!
 
 ** Workshop Format
@@ -155,13 +155,18 @@ implicit class EnrichedJsValue(v: JsValue) {
 * Fundamentals
 ** Shapeless
 
+# WORKAROUND https://github.com/jgm/pandoc/issues/1877
+# or         https://github.com/jgm/pandoc/issues/1906
+#+BEGIN_HTML
+<script type="text/javascript">
+document.getElementById("shapeless").setAttribute("data-background", "./images/brucelee.jpg");
+</script>
+#+END_HTML
+
 #+BEGIN_NOTES
 https://upload.wikimedia.org/wikipedia/commons/c/cb/Hong_kong_bruce_lee_statue_2.jpg
 
 As far as I am aware, this is the origin of the name shapeless.
-
-So we're actually doing 
-
 #+END_NOTES
 
 #+BEGIN_VERSE
@@ -259,9 +264,6 @@ implicit class EnrichedJsValue(val v: JsValue) extends AnyVal {
   def convertTo[T](implicit f: JsonFormat[T]): T = f.read(v)
 }
 #+END_SRC
-
-# WORKAROUND https://github.com/jgm/pandoc/issues/2504
-
 ** Singleton Types
 
 #+BEGIN_NOTES
@@ -332,7 +334,7 @@ field[Symbol('b)](42)    : FieldType[Symbol('b), Int]     // <: Int
 field[Symbol('c)](true)  : FieldType[Symbol('c), Boolean] // <: Boolean
 #+END_SRC
 
-
+# WORKAROUND https://github.com/jgm/pandoc/issues/2504
 ** ​ +Product+ HList
 
 #+BEGIN_NOTES

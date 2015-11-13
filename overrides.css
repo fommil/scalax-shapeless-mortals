@@ -41,11 +41,7 @@ ul li ul li {
     list-style-type: none;
 }
 
-/** WORKAROUND: https://github.com/jgm/pandoc/issues/1906 */
 #shapeless {
-    width: 1024px;
-    height: 768px;
-	background:url("images/brucelee.jpg");
-	background-position:center;
     text-align: right;
+    text-shadow: 2px 2px 8px white;
 }

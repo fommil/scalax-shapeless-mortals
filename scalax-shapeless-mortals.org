@@ -159,7 +159,7 @@ implicit class EnrichedJsValue(v: JsValue) {
 # or         https://github.com/jgm/pandoc/issues/1906
 #+BEGIN_HTML
 <script type="text/javascript">
-document.getElementById("shapeless").setAttribute("data-background", "./images/brucelee.jpg");
+document.getElementById('shapeless').setAttribute("data-background-image", "./images/brucelee.jpg");
 </script>
 #+END_HTML
 
@@ -502,6 +502,14 @@ So to build the typeclass for the entire teapot, 6 other typeclasses are derived
 ** TODO ​ +CohList+ Coproduct
 * Enter the Dragon
 ** TODO Singleton Symbols
+
+# can't put this in the section before as its ignored
+#+BEGIN_HTML
+<script type="text/javascript">
+document.getElementById('enter-the-dragon').setAttribute("data-background-image","./images/dragon.jpg");
+</script>
+#+END_HTML
+
 ** TODO Hipster.Aux (SI-823)
 
 #+BEGIN_NOTES

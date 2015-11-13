@@ -2,7 +2,7 @@
 /* https://github.com/hakimel/reveal.js/issues/1237 */
 .reveal h1 {
     font-size: 1.4em;
-    text-shadow: none;
+    text-shadow: 2px 2px 8px white;
 }
 .reveal h2 { font-size: 1.2em; }
 .reveal h3 { font-size: 1.1em; }

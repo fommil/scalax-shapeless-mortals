@@ -412,7 +412,7 @@ implicit def hListFormat[Key <: Symbol, Value, Remaining <: HList](
   key: Witness[Key],
   jfh: JsonFormat[Value],
   jft: JsonFormat[Remaining]
-): JsonFormat[FieldType[Key, Value] :: Remaining] = {
+): JsonFormat[FieldType[Key, Value] :: Remaining] = new JsonFormat {
 #+END_SRC
 
 . . .
@@ -576,8 +576,155 @@ implicit val TeapotJsonFormat = cachedImplicit[Teapot]
 teapot.toJson // {"a": "hello", "b": 1, "c": true}
 #+END_SRC
 
+** ​ +CohList+ Coproduct
 
-** TODO ​ +CohList+ Coproduct
+#+BEGIN_NOTES
+But that's not all that =LabelledGeneric= can do, it also works for sealed traits...
+
+Here we create a simple sealed trait with two implementations. Remember that sealing a trait means that all the implementations are known at compile time.
+
+And if we ask for the =LabelledGeneric= for the sealed trait, we get this new thing that we've not seen before.
+
+Instead of being an =HList= this is a =Coproduct=, with the terminating element being =CNil= and the cons operator of =:+:=.
+
+Coproducts are mutually exclusive, only one of the elements is going to be present at runtime. It's basically a generalised =Either=.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+sealed trait Receptacle
+case class Glass(a: String) extends Receptacle
+case class Bottle(a: Int) extends Receptacle
+case class Teapot(a: Boolean) extends Receptable
+
+val generic = LabelledGeneric[Receptacle]
+generic.Repr: FieldType[Symbol('Glass),   Glass] :+:
+              FieldType[Symbol('Bottle), Bottle] :+:
+              FieldType[Symbol('Teapot), Teapot] :+:
+              CNil
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+The way =Coproduct= is implemented is like this, we have the terminating =CNil= and then the cons cells which either contain a value or don't, instead deferring to their tail.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+sealed trait Coproduct
+sealed trait CNil extends Coproduct
+sealed trait :+:[+H, +T <: Coproduct] extends Coproduct
+final case class Inl[+H, +T <: Coproduct](head : H) extends :+:[H, T]
+final case class Inr[+H, +T <: Coproduct](tail : T) extends :+:[H, T]
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+You wouldn't typically explicitly create a =Coproduct= yourself, you would have some instance of a sealed trait and then you would convert it into the generic form. Once in the generic form, we can then pattern match each cell.
+
+Note that as soon as you hit a =head= element, that's it... there is nothing else to do. In fact, this is how uniqueness is guaranteed (although there is no type guarantee that there is an =Inl=, just that there is not more than one).
+
+Here we define a simple method that prints out any =Coproduct= as an S-Expression.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+def show(o: Coproduct): String = o match {
+  case Inl(head) => "\"" + head + "\""
+  case Inr(tail) => "(nil . " + show(tail) + ")"
+}
+
+showCoproduct(generic.to(Glass("foo"))) // "Glass(foo)"
+showCoproduct(generic.to(Bottle(99)))   // (nil . "Bottle(99)")
+showCoproduct(generic.to(Teapot(true))) // (nil . (nil . "Teapot(true)"))
+#+END_SRC
+
+-----
+
+#+BEGIN_NOTES
+So lets get back to business and extend our JSON marshaller so that it can handle sealed traits! Bizarrely we have to start with something that is never called, which is the =CNil= terminator.
+
+The reason this is never called is because we never actually get to the end of non-empty =Coproducts=, it'll always terminate somewhere. However, the definition of the types certainly makes it look like its needed, so we have to provide one.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+implicit object CNilFormat extends JsonFormat[CNil] {
+  def read(j: JsValue) = throw new GuruMeditationFailure
+  def write(n: CNil)   = throw new GuruMeditationFailure
+}
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+Again, we'll go through this bit at a time, starting with the scary type signature.
+
+The most important thing here is that we're returning a =JsonFormat= for the coproduct of the Head, which has a head that is a FieldType, so it has value Head and key Name (a singleton type). We require the formatter for the head instance, and also one for the tail (which will be provided by another call to this method but with different type parameters).
+#+END_NOTES
+
+#+BEGIN_SRC scala
+implicit def coproductFormat[Name <: Symbol, Head, Tail <: Coproduct](
+  implicit
+  key: Witness[Name],
+  jfh: JsonFormat[Head],
+  jft: JsonFormat[Tail]
+): JsonFormat[FieldType[Name, Head] :+: Tail] = new JsonFormat {
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+For reading, we first turn the JSON object into a key/value map and get the value in the "type" field. If it matches the instance that we're creating, then we unmarshal in as an =Head=, otherwise we pass it through to the next formatter.
+
+This is kind of weird, we're not reading the type from the JSON and immediately deciding what to do with it, we're letting one of the many Coproduct implementations to declare "I can handle this!".
+#+END_NOTES
+
+#+BEGIN_SRC scala
+  def read(j: JsValue) =
+    if (j.asJsObject("type") == key.value)
+      Inl(field[Name](jfh.read(j)))
+    else
+      Inr(jft.value.read(j))
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+And for the writing, we do much the same thing.
+
+This time we pattern match on =Inl= vs =Inr= as we seen earlier, using the head formatter if the instance is an =Inl=, otherwise passing it off to the tail.
+
+And that's it!
+#+END_NOTES
+
+#+BEGIN_SRC scala
+  def write(lr: FieldType[Name, Head] :+: Tail) = lr match {
+    case Inl(found) =>
+      jfh.write(found).asJsObject :+ ("type" -> key.value)
+
+    case Inr(tail) =>
+      jft.write(tail)
+  }
+}
+#+END_SRC
+
+** ✨ Shapeless Magic ✨
+
+#+BEGIN_NOTES
+Now we can do this kind of crazy stuff, using shapeless magic...
+#+END_NOTES
+
+#+BEGIN_SRC scala
+Glass("foo").toJson  // { "a":"foo" }
+Bottle(99).toJson    // { "a":99    }
+Teapot(true).toJson  // { "a":true  }
+
+(Glass("foo"):Receptacle).toJson // { "type":"Glass",  "a":"foo" }
+(Bottle(99)  :Receptacle).toJson // { "type":"Bottle", "a":99    }
+(Teapot(true):Receptacle).toJson // { "type":"Teapot", "a":true  }
+#+END_SRC
+
+
+
 * Enter the Dragon
 ** TODO Singleton Symbols
 
@@ -633,13 +780,8 @@ don't put domain objects in a parent project (SI-7755)
 
 ** TODO Crappy Errors
 
-* FamilyFormat
-** TODO first cut, no customisation
-** TODO add the wrapper
-** TODO add customisation
-
 * Your Turn!
-** TODO Mortal Enemy: =Map[String, Any]=
+** TODO Mortal Enemy: =java.util.HashMap[String, AnyRef]=
 ** TODO or (stripped down) S-Express
 ** TODO or (advanced) features in spray-json-shapeless
 ** TODO practicalities: repos

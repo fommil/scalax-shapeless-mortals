@@ -890,12 +890,16 @@ implicit def familyFormat[T, Repr](
 ): JsonFormat[T] = ...
 #+END_SRC
 
-** Hipster??
+-----
+
+Hipster??
 
 #+BEGIN_NOTES
 And where does the Hipster come from?
 
 Somebody posted this lovely code on livejournal, for which it was mocked thoroughly. It has since become an inside joke, of which I hope you are all now a part of.
+
+I have no idea what this code is doing, maybe my beard is not long enough.
 #+END_NOTES
 
 #+BEGIN_SRC scala
@@ -912,20 +916,64 @@ def validate[F[_], G, H, V <: HList, I <: HList, M <: HList, A <: HList, R]
 
 [[./images/hipsteraux.png]]
 
-** TODO Higher Kinds (SI-2712)
+** Higher Order Unification (SI-2712)
+
+# Not directly shapeless related, but it is definitely worth knowing about this if you're doing any generic programming.
+# (droppable if running slowly)
+# https://github.com/ensime/ensime-server/blob/master/sexpress/src/main/scala/org/ensime/sexp/formats/CollectionFormats.scala#L20
+# https://github.com/spray/spray-json/blob/master/src/main/scala/spray/json/CollectionFormats.scala
+# https://meta.plasm.us/posts/2015/07/11/roll-your-own-scala/
 
 #+BEGIN_NOTES
-Not directly shapeless related, but it is definitely worth knowing about this if you're doing any generic programming.
+The stock implementation of =JsonFormat= from Collection types is hand written and quite verbose. We can do better with shapeless.
 
-(droppable if running slowly)
-
-https://github.com/ensime/ensime-server/blob/master/sexpress/src/main/scala/org/ensime/sexp/formats/CollectionFormats.scala#L20
-
-
-https://github.com/spray/spray-json/blob/master/src/main/scala/spray/json/CollectionFormats.scala
-
-https://meta.plasm.us/posts/2015/07/11/roll-your-own-scala/
+We'd ideally want to start writing the code like this. But we can't because scala doesn't have higher order unification.
 #+END_NOTES
+
+#+BEGIN_SRC scala
+implicit def getTraversableformat[E, T <: GenTraversable[E]]( // WHAMMM!!!
+  implicit
+  cbf: CanBuildFrom[T, E, T],
+  ef:  JsonFormat[E]
+): JsonFormat[T] = ...
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+The "kindedness" of a type parameter restricts what it can be equated
+to. A no-param type such as =T= cannot be equated to a one-param type
+such as =T[E]=, etc.
+#+END_NOTES
+
+- =T= has kind =★=
+- =GenTraversable[E]= has kind =★→★=
+- =scalac= can't equate =★= to a =★→★=
+
+. . .
+
+#+BEGIN_NOTES
+There are several workarounds, all tedious. The most popular one involves a trick known as providing "evidence" and using the =<:<= infix type, which will be implicitly available if the left is a subtype of the right.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+import scala.language.higherKinds
+
+implicit def genTraversableFormat[T[_], E](
+  implicit
+  evidence: T[E] <:< GenTraversable[E], // both of kind *->*
+  cbf: CanBuildFrom[T[E], E, T[E]],
+  ef: JsonFormat[E]
+): JsonFormat[T[E]] = ...
+#+END_SRC
+
+-----
+
+#+BEGIN_NOTES
+Just to let you know how much this impacts people, the ticket was accidentally closed and this was the response:
+#+END_NOTES
+
+[[./images/unification.png]]
 
 ** TODO Implicit Resolution "rules" (SI-7755)
 

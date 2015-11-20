@@ -594,7 +594,7 @@ Coproducts are mutually exclusive, only one of the elements is going to be prese
 sealed trait Receptacle
 case class Glass(a: String) extends Receptacle
 case class Bottle(a: Int) extends Receptacle
-case class Teapot(a: Boolean) extends Receptable
+case class Teapot(a: Boolean) extends Receptacle
 
 val generic = LabelledGeneric[Receptacle]
 generic.Repr: FieldType[Symbol('Glass),   Glass] :+:
@@ -872,6 +872,8 @@ implicit def hListFormat[Key <: Symbol, Value, Remaining <: HList](
 ): JsonFormat[FieldType[Key, Value] :: Remaining] = ...
 #+END_SRC
 
+. . .
+
 #+BEGIN_SRC scala
 implicit def coproductFormat[Name <: Symbol, Head, Tail <: Coproduct](
   implicit
@@ -880,6 +882,8 @@ implicit def coproductFormat[Name <: Symbol, Head, Tail <: Coproduct](
   jft: JsonFormat[Tail]
 ): JsonFormat[FieldType[Name, Head] :+: Tail] = ...
 #+END_SRC
+
+. . .
 
 #+BEGIN_SRC scala
 implicit def familyFormat[T, Repr](
@@ -975,21 +979,257 @@ Just to let you know how much this impacts people, the ticket was accidentally c
 
 [[./images/unification.png]]
 
-** TODO Implicit Resolution "rules" (SI-7755)
+** Implicit Resolution: Recursion
 
 #+BEGIN_NOTES
-refresher of what is searched, but actually that the compiler source code is the real spec.
+This simple data structure is recursive, in that the types of the
+parameters of a =Product= type (i.e. case classes) refers to
+=Coproduct= types (i.e. the sealed trait).
 
-sometimes you have to just bring an implicit into higher resolution scope.
-
-shapeless.Lazy to try to force late resolution.
-
-shapeless.Strict (upcoming)
-
-don't put domain objects in a parent project (SI-7755)
+Thinking from a purely type point of view, this data structure is
+potentially infinite.
 #+END_NOTES
 
-** TODO Crappy Errors
+#+BEGIN_SRC scala
+sealed trait Tree
+case class Branch(left: Tree, right: Tree) extends Tree
+case object Leaf extends Tree
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+Lets create a toy typeclass, =Smell= and handcraft implementations. The recursion is now really obvious because =branchSmell= requires the output of =treeSmell= which requires the output of =branchSmell=.
+
+Basically, the implicit resolver just gives up because it decides not to investigate the infinite rabbit hole.
+
+The weird thing is that the rules for when the compiler "gives up" are not defined, its defined by the implementation of the scala compiler, so it's hard to know exactly when you need to workaround this.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+trait Smell[T]
+
+implicit def leafSmell: Smell[Leaf] = ???
+
+// recursive
+implicit def treeSmell(implicit
+  branch: Smell[Branch],
+  leaf: Smell[Leaf]): Smell[Tree] = ...
+implicit def branchSmell(implicit
+  tree: Smell[Tree]): Smell[Branch] = ...
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+The workaround is to introduce =Lazy= which effectively tells the compiler to try a little harder and is lazily loaded, so can be used recursively.
+
+To obtain the contents of a =Lazy= wrapped parameter, just call =value= on it.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+implicit def treeSmell(implicit
+  lazyBranch: Lazy[Smell[Branch]],
+  leaf: Smell[Leaf]): Smell[Tree] = {
+  val branch = lazyBranch.value
+  ...
+}
+implicit def branchSmell(implicit
+  lazyTree: Lazy[Smell[Tree]]): Smell[Branch] = {
+  val tree = lazyTree.value
+  ...
+}
+#+END_SRC
+
+-----
+
+#+BEGIN_NOTES
+So how does this affect our implementation?
+
+Well everywhere there could be a recursive call, we have to use =Lazy=
+#+END_NOTES
+
+#+BEGIN_SRC scala
+implicit def hListFormat[Key <: Symbol, Value, Remaining <: HList](
+  implicit
+  key: Witness.Aux[Key],
+  lazyJfh: Lazy[JsonFormat[Value]],
+  lazyJft: Lazy[JsonFormat[Remaining]]
+): JsonFormat[FieldType[Key, Value] :: Remaining] = {
+  val jfh = lazyJfh.value
+  val jft = lazyJft.value
+  ...
+}
+#+END_SRC
+
+. . .
+
+#+BEGIN_SRC scala
+implicit def coproductFormat[Name <: Symbol, Head, Tail <: Coproduct](
+  implicit
+  key: Witness.Aux[Name],
+  lazyJfh: Lazy[JsonFormat[Head]],
+  lazyJft: Lazy[JsonFormat[Tail]]
+): JsonFormat[FieldType[Name, Head] :+: Tail] = {
+  val jfh = lazyJfh.value
+  val jft = lazyJft.value
+  ...
+}
+#+END_SRC
+
+. . .
+
+#+BEGIN_SRC scala
+implicit def familyFormat[T, Repr](
+  implicit
+  gen: LabelledGeneric.Aux[T, Repr],
+  lazySg: Lazy[JsonFormat[Repr]],
+  tpe: Typeable[T]
+): JsonFormat[T] = {
+  val sg = lazySg.value
+}
+#+END_SRC
+
+-----
+
+#+BEGIN_NOTES
+Also when asking for an implicit implementation of a =JsonFormat= we sometimes have to use =Lazy=
+#+END_NOTES
+
+#+BEGIN_SRC scala
+// a convenience for implicitly[Lazy[JsonFormat[T]]].value
+// but also consider using shapeless' cachedImplicit
+object JsonFormat {
+  def apply[T](implicit f: Lazy[JsonFormat[T]]): JsonFormat[T] = f.value
+}
+#+END_SRC
+
+. . .
+
+Watch out for =Strict= by =@alxarchambault= (shapeless 3.0) which will provide a different mechanism for solving this problem.
+
+
+** Implicit Resolution: Cycles
+
+#+BEGIN_NOTES
+Sometimes the implicit resolution just stops working, for no reason.
+
+The only way to fix it is by separating out your code into packages and never calling the derived code from a parent package.
+#+END_NOTES
+
+*Always*
+
+#+BEGIN_SRC scala
+package com.domain.api
+package com.domain.formats
+package com.domain.app
+#+END_SRC
+
+*Never*
+
+Use =com.domain.formats= from =com.domain=
+
+** Implicit Resolution: Priority
+
+#+BEGIN_NOTES
+The scala compiler is supposed to search for implicits using the following rules:
+#+END_NOTES
+
+How it's *supposed* to work:
+
+- *Normal Scope*
+  - Local / outer / ancestors / package object / imports
+- *Implicit Scope*
+  - Given parameter type
+  - Expected parameter type
+  - Type parameter (if there is one)
+
+-----
+
+*IMPLICIT RESOLUTION*
+
+How it *actually* works:
+
+. . .
+
+#+BEGIN_NOTES
+Yup, basically the scalac code is the definition of how it works and sometimes it works the way you expect and sometimes it doesn't.
+
+Apparently =dotty= is going to be far more rigorous.
+#+END_NOTES
+
+
+[[./images/bender.png]]
+
+-----
+
+#+BEGIN_NOTES
+If we try our best to stick to these rules, it means we'll put our =familyFormat= code into an object with this structure to try and make our family formats have lower priority than the ones in spray-json itself:
+#+END_NOTES
+
+#+BEGIN_SRC scala
+trait FamilyFormats extends LowPriorityFamilyFormats {
+  this: StandardFormats =>
+}
+object FamilyFormats extends DefaultJsonProtocol with FamilyFormats
+
+private[sjs] trait LowPriorityFamilyFormats {
+  this: StandardFormats with FamilyFormats =>
+  ...
+}
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+However, even though we've obliged the scala compiler's rules, if we try to ask for the format for something like =Symbol= or =Either= we end up getting the shapeless magic version instead of the higher priority one defined by spray-json.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+implicitly[JsonFormat[Symbol]]            // => familyFormat
+implicitly[JsonFormat[Left[String, Int]]] // => familyFormat
+#+END_SRC
+
+-----
+
+#+BEGIN_NOTES
+The workaround is for the end-user to have to override the spray-json implementation in their format code. I've tried to put this into the =FamilyFormats= object before, but it doesn't work for some weird reason.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+package brucelee.api {
+  sealed trait Receptacle
+  case class Glass(a: String) extends Receptacle
+  case class Bottle(a: Int) extends Receptacle
+  case class Teapot(a: Boolean) extends Receptacle
+}
+#+END_SRC
+
+#+BEGIN_SRC scala
+package brucelee.format {
+  object MyFormats extends FamilyFormats {
+    implicit override def eitherFormat[A, B](implicit
+      a: JsonFormat[A],
+      b: JsonFormat[B]) = super.eitherFormat[A, B]
+    implicit val symbolFormat = SymbolJsonFormat
+
+    implicit val ReceptacleF: JsonFormat[Receptacle] = cachedImplicit
+  }
+}
+#+END_SRC
+
+#+BEGIN_SRC scala
+package brucelee.app {
+  import spray.json._
+  import brucelee.format.MyFormats.ReceptacleF
+
+  Glass("half").toJson
+}
+#+END_SRC
+
+** Crappy Errors
+
+*** TODO
 
 * Your Turn!
 ** TODO Mortal Enemy: =java.util.HashMap[String, AnyRef]=

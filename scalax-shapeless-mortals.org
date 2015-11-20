@@ -699,7 +699,7 @@ And that's it!
 #+BEGIN_SRC scala
   def write(lr: FieldType[Name, Head] :+: Tail) = lr match {
     case Inl(found) =>
-      jfh.write(found).asJsObject :+ ("type" -> key.value)
+      jfh.write(found).asJsObject + ("type" -> key.value)
 
     case Inr(tail) =>
       jft.write(tail)
@@ -723,10 +723,8 @@ Teapot(true).toJson  // { "a":true  }
 (Teapot(true):Receptacle).toJson // { "type":"Teapot", "a":true  }
 #+END_SRC
 
-
-
 * Enter the Dragon
-** TODO Singleton Symbols
+** Singleton Symbols
 
 # can't put this in the section before as its ignored
 #+BEGIN_HTML
@@ -735,19 +733,184 @@ document.getElementById('enter-the-dragon').setAttribute("data-background-image"
 </script>
 #+END_HTML
 
-** TODO Hipster.Aux (SI-823)
+#+BEGIN_NOTES
+Now we get to find out the horrible reality of the scala compiler's limitations.
+
+First up, I lied to you about singleton types.
+
+If you type this, you'll get a compile failure because the entire concept of singleton types is internal compiler detail and is not supported at the language level.
+#+END_NOTES
+
+
+# would be nice to have red squiggles, but probably requires HTML_ATTR
+#  http://stackoverflow.com/questions/6821365
+#  https://groups.google.com/d/msg/pandoc-discuss/QPtM0PDrAGA/jXHeKFKjDgAJ
+#+BEGIN_SRC scala
+"bar".narrow : String("bar") // CRASH!
+42.narrow    : Int(42)       // BANG!
+true.narrow  : Boolean(true) // POWIE!
+#+END_SRC
+
+. . .
+
+#+BEGIN_SRC
+scala> "bar".narrow
+res0: String("bar") = bar
+
+scala> 42.narrow
+res1: Int(42) = 42
+
+scala> true.narrow
+res2: Boolean(true) = true
+#+END_SRC
+
+. . .
 
 #+BEGIN_NOTES
-refined types as a workaround to scala bug https://issues.scala-lang.org/browse/SI-823 
-
-https://github.com/typelevel/scala/issues/8
-
-https://github.com/milessabin/shapeless/blob/master/core/src/main/scala/shapeless/generic.scala#L148
-
-https://github.com/ensime/ensime-server/blob/master/sexpress/src/main/scala/org/ensime/sexp/formats/ProductFormats.scala#L55
-
-https://gist.github.com/milessabin/cadd73b7756fe4097ca0
+And worse, there isn't even such a thing as a singleton symbol, they only exist for primitive types
 #+END_NOTES
+
+#+BEGIN_SRC
+scala> 'foo.narrow
+res3: Symbol with Tagged[String("foo")] = 'foo
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+Importantly, that means you can't write this sort of thing.
+#+END_NOTES
+
+#+BEGIN_SRC
+field[Symbol('a)]("bar")  // KERPLOP!
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+The workaround is that you can construct the witness from the value, and then use its type and if it is the parameter to a method, you have to take an implicit witness object.
+#+END_NOTES
+
+#+BEGIN_SRC
+implicit val a = Witness('a)
+scala> field[a.T]("bar")
+res4: FieldType[a.T,String] = bar
+#+END_SRC
+
+** Hipster.Aux (SI-823)
+
+# https://issues.scala-lang.org/browse/SI-823
+# https://github.com/typelevel/scala/issues/8
+# https://github.com/milessabin/shapeless/blob/master/core/src/main/scala/shapeless/generic.scala#L148
+# https://github.com/ensime/ensime-server/blob/master/sexpress/src/main/scala/org/ensime/sexp/formats/ProductFormats.scala#L55
+# https://gist.github.com/milessabin/cadd73b7756fe4097ca0
+# http://ivan-gandhi.livejournal.com/2345366.html
+#+BEGIN_NOTES
+Turns out, this doesn't compile.
+
+scalac doesn't allow you to reference types in the same parameter block.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+trait A { type T }
+
+def f(a: A, t: a.T) = ...
+// parameter a must appear in a parameter list
+// that precedes dependent parameter type a.T
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+This is how you can fix it.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+def f(a: A)(t: a.T) = ...
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+But this is no use for implicit parameter blocks, because we can't split them up.
+
+This is one of the features that Typelevel Scala plans to implement.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+def f(implicit a: A)(implicit t: a.T) = ... // THWAPP!
+// TODO https://github.com/typelevel/scala/issues/8
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+So shapeless introduces the =Aux= pattern to deal with this.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+trait Hipster[T] { type Repr }
+object Hipster {
+  type Aux[T, Repr0] = Hipster[T] { type Repr = Repr0 }
+}
+
+def f[T, Repr](implicit hip: Hipster.Aux[T, Repr]) = ...
+#+END_SRC
+
+-----
+
+#+BEGIN_NOTES
+The implications for our JSON marshaller is that we have to change all the implicit parameters to use the =Aux= pattern
+#+END_NOTES
+
+#+BEGIN_SRC scala
+implicit def hListFormat[Key <: Symbol, Value, Remaining <: HList](
+  implicit
+  key: Witness.Aux[Key],
+  jfh: JsonFormat[Value],
+  jft: JsonFormat[Remaining]
+): JsonFormat[FieldType[Key, Value] :: Remaining] = ...
+#+END_SRC
+
+#+BEGIN_SRC scala
+implicit def coproductFormat[Name <: Symbol, Head, Tail <: Coproduct](
+  implicit
+  key: Witness.Aux[Name],
+  jfh: JsonFormat[Head],
+  jft: JsonFormat[Tail]
+): JsonFormat[FieldType[Name, Head] :+: Tail] = ...
+#+END_SRC
+
+#+BEGIN_SRC scala
+implicit def familyFormat[T, Repr](
+  implicit
+  gen: LabelledGeneric.Aux[T, Repr],
+  sg: JsonFormat[Repr],
+  tpe: Typeable[T]
+): JsonFormat[T] = ...
+#+END_SRC
+
+** Hipster??
+
+#+BEGIN_NOTES
+And where does the Hipster come from?
+
+Somebody posted this lovely code on livejournal, for which it was mocked thoroughly. It has since become an inside joke, of which I hope you are all now a part of.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+def validate[F[_], G, H, V <: HList, I <: HList, M <: HList, A <: HList, R]
+  (g: G)(v: V)(implicit
+  hlG: FnHListerAux[G, A => R],
+  zip: ZipApplyAux[V, I, M],
+  mapped: MappedAux[A, F, M],
+  unH: FnUnHListerAux[I => F[R], H],
+  folder: LeftFolderAux[M, F[A => R], applier.type, F[HNil => R]],
+  appl: Applicative[F]
+) = unH((in: I) => folder(zip(v, in), hlG(g).point[F]).map(_(HNil)))
+#+END_SRC
+
+[[./images/hipsteraux.png]]
 
 ** TODO Higher Kinds (SI-2712)
 

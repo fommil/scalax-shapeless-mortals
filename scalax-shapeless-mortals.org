@@ -1563,7 +1563,52 @@ The crazy thing is that this then works on case classes and sealed traits which 
 everywhere(Canon)(message)
 #+END_SRC
 
-** TODO enum pattern
+** A better enum
+
+#+BEGIN_NOTES
+Another thing I've used a lot is the typesafe enum pattern.
+
+Contrast to the scala standard library approach:
+#+END_NOTES
+
+#+BEGIN_SRC scala
+// the old way!
+object WeekDay extends Enumeration {
+  type WeekDay = Value
+  val Mon, Tue, Wed, Thu, Fri, Sat, Sun = Value
+}
+
+def isWeekend(d: WeekDay) = d match {
+  case Sat | Sun => true
+  // Oops! Missing case ... still compiles
+}
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+We can get all value implementations of a sealed trait via this =values= method which passes out to the shapeless magic of =Values= if we use variations on this pattern.
+
+The big advantage vs alternatives is that the compiler knows about the instances and will ensure that we've captured everything when we do pattern matches.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+// the new way!
+sealed trait WeekDay
+object WeekDay {
+  val Mon, Tue, Wed, Thu, Fri, Sat, Sun = new WeekDay {}
+  val values: Set[WeekDay] = Values
+}
+
+def isWeekend(d: WeekDay) = d match {
+  case Sat | Sun => true
+  case _         => false // compiler checks for this
+}
+#+END_SRC
+
+. . .
+
+=Values= is in =shapeless/examples/enum.scala=
 
 ** More...
 

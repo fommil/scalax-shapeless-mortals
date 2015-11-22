@@ -1106,7 +1106,7 @@ object JsonFormat {
 
 . . .
 
-Watch out for =Strict= by =@alxarchambault= (shapeless 3.0) which will provide a different mechanism for solving this problem.
+Watch out for =Strict= by =@alxarchambault= (shapeless 3.0).
 
 ** Implicit Resolution: Cycles
 
@@ -1483,8 +1483,6 @@ trait SexpFormat[T] {
   def write(obj: T): Sexp
 }
 #+END_SRC
-
-. . .
 
 - Exercise 2.1: implement =SexpFormat[T]= for sealed traits.
 - Exercise 2.2: customise products as "data" or "alist" forms.

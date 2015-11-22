@@ -4,14 +4,13 @@ INPUT=scalax-shapeless-mortals.org
 TALK=scalax-shapeless-mortals-talk.html
 NOTES=scalax-shapeless-mortals-notes.html
 
-#        --incremental \
-
 echo "creating $TALK"
 pandoc --standalone \
        --smart \
        --parse-raw \
        --write=revealjs \
        --slide-level=2 \
+       --incremental \
        --variable theme:beige \
        --variable width:1024 \
        --variable height:768 \

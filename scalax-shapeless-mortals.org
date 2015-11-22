@@ -1262,14 +1262,275 @@ cannot find implicit for JsonFormat[Dragon]
 #+END_SRC
 
 * Your Turn!
-** TODO Mortal Enemy: =java.util.HashMap[String, AnyRef]=
-** TODO or (stripped down) S-Express
-** TODO or (advanced) features in spray-json-shapeless
-** TODO practicalities: repos
+** Practicalities
 
-* Solutions
+#+BEGIN_NOTES
+Now we're going to have the exercise part of the workshop, so you'll either need to get your laptop out or pair with somebody who has a laptop.
+
+The exercises are in the =shapeless-for-mortals= repository but you also find it instructive to clone the =ensime-server= and =spray-json-shapeless= repositories.
+#+END_NOTES
+
+- https://github.com/fommil/shapeless-for-mortals/
+- https://github.com/ensime/ensime-server/
+- https://github.com/fommil/spray-json-shapeless/
+
+** Big Data Stringy Map (BDSM)
+
+#+BEGIN_NOTES
+We've all seen this perverted data structure before, it somehow manages to find its way into every large project and is almost impossible to remove.
+
+We're going to try to add some type safety around it with shapeless.
+#+END_NOTES
+
+=java.util.HashMap[String, AnyRef]=
+
+#+BEGIN_SRC scala
+type StringyMap = java.util.HashMap[String, AnyRef]
+type BigResult[T] = Either[String, T]
+#+END_SRC
+
+#+BEGIN_SRC scala
+trait BigDataFormat[T] {
+  def label: String
+  def toProperties(t: T): StringyMap
+  def fromProperties(m: StringyMap): BigResult[T]
+}
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+And just to make it really exciting, you can't *really* put anything in the value of the stringy map, your values should only have typeclasses like this, which can turn them into java types that are really supported by the thing that consumes BDSMs.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+trait SPrimitive[V] {
+  // e.g. Int => java.lang.Integer
+  def toValue(v: V): AnyRef
+  def fromValue(v: AnyRef): V
+}
+#+END_SRC
+
+- Exercise 1.1: derive =BigDataFormat= for sealed traits.
+
+-----
+
+#+BEGIN_NOTES
+A follow up exercise is to support the concept of identity for the implementations of the sealed traits.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+trait BigDataFormatId[T, P] {
+  def key: String
+  def value(t: T): P
+}
+#+END_SRC
+
+- Exercise 1.2: define identity constraints using singleton types.
+
+** S-Express
+
+#+BEGIN_NOTES
+Let's talk about lisp for a little bit, or more specifically,
+S-Expressions.
+
+For the emacs users among you, this is second nature.
+
+An S-Expression is either an atom - symbol, string, number, array,
+hashmap, etc - or a cons of two S-Expressions, using this parenthesis
+notation with a dot to separate the two parts.
+#+END_NOTES
+
+#+BEGIN_SRC ditaa :file images/sexp.png :exports results :cmdline -T
+                            /--*--\
+                            |     |
+                            |     |
+                        +---++   ++----------+
+                        |Atom|   | ( x . y ) |
+                        +--+-+   +-----------+
+                           |
+            /--------+-----+
+            |        |     |
+        /---+--+ /---+--+ /+-----+
+        |Symbol| |String| |Number|
+        +------/ +------/ +------/
+#+END_SRC
+#+RESULTS:
+[[file:images/sexp.png]]
+
+. . .
+
+#+BEGIN_SRC scala
+sealed trait Sexp
+
+case class SexpCons(x: Sexp, y: Sexp) extends Sexp
+sealed trait SexpAtom extends Sexp
+
+case class SexpString(value: String) extends SexpAtom
+case class SexpNumber(value: BigDecimal) extends SexpAtom
+case class SexpSymbol(value: String) extends SexpAtom
+case object SexpNil extends SexpAtom
+...
+#+END_SRC
+
+-----
+
+#+BEGIN_NOTES
+One of the most amazing things about S-Expressions, and lisp, is that
+data is code and code is data.
+
+There is no real "list" data type, in the Scala sense, it's just any
+structure that ends with the symbol "nil".
+
+Lists are so common in lisps that this special syntax is introduced.
+#+END_NOTES
+
+#+BEGIN_SRC ditaa :file images/sexp-list.png :exports results :cmdline -T
+
+          /----*----\
+          |         |
+        +-+-+       |
+        | a |  /----*----\
+        +---+  |         |
+             +-+-+       |
+             | b |  /----*----\
+             +---+  |         |
+                  +-+-+     +-+-+
+                  | c |     |nil|
+                  +---+     +---+
+
+#+END_SRC
+#+RESULTS:
+[[file:images/sexp-list.png]]
+
+#+BEGIN_SRC emacs-lisp
+(a . (b . (c . nil)))
+
+(a b c) ;; list syntax
+#+END_SRC
+
+-----
+
+#+BEGIN_NOTES
+And similarly, other collection types are defined by convention rather
+than with formal types.
+
+Here we have "data syntax", using keywords - symbols that begin with a
+colon - which is really just a list of alternating keywords and
+values.
+
+And here we have a complex map structure where the first key is a list
+of numbers and the second key is a data structure.
+
+It's these "data syntax" structures that make up the majority of the
+ENSIME protocol, called SWANK.
+#+END_NOTES
+
+=data=
+
+#+BEGIN_SRC emacs-lisp
+(:keyA . (valueA . (:keyB . (valueB . nil))))
+
+(:keyA valueA
+ :keyB valueB) ;; data syntax with keywords
+
+(:file "Foo.scala"
+ :line 13)
+
+;; complex map structure
+((1 2 3) "Foo.scala"
+ (:key value) 13)
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+An alternative representation is the =alist= form which is a list, but each element in the list is a key/value pair.
+#+END_NOTES
+
+=alist=
+
+#+BEGIN_SRC emacs-lisp
+((keyA . valueA) . ((keyB . valueB) . nil))
+
+((keyA . valueA)
+ (keyB . valueB)) ;; alist syntax
+
+((file . "Foo.scala")
+ (line . 13))
+#+END_SRC
+
+
+-----
+
+#+BEGIN_NOTES
+S-Express is one of the marshalling formats used by ENSIME and was written before shapeless supported coproduct derivation.
+
+The typeclass that it uses is very similar to spray-json and looks something like this.
+#+END_NOTES
+
+vs JSON
+
+- JSON keys are =String=
+- JSON maps are unordered
+- S-Exp naturally encodes structure
+
+. . .
+
+#+BEGIN_SRC scala
+trait SexpFormat[T] {
+  def read(value: Sexp): T
+  def write(obj: T): Sexp
+}
+#+END_SRC
+
+. . .
+
+- Exercise 2.1: implement =SexpFormat[T]= for sealed traits.
+- Exercise 2.2: customise products as "data" or "alist" forms.
+
+** Customise =JsonFormat=
+
+#+BEGIN_NOTES
+So far we've developed a simple JSON format deriver, but in reality people want to have much more control over it. So, starting with what we've covered in this presentation, add the following features:
+#+END_NOTES
+
+- Exercise 3.1: customise product field names
+- Exercise 3.2: customise coproduct (flat vs nested)
+- Exercise 3.3: customise handling of =null= and =Option=
+- Exercise 3.4: handle default values on products
+
+** Go!
+
+#+BEGIN_HTML
+<script type="text/javascript">
+document.getElementById('go').setAttribute("data-background-image", "./images/brucelee-kick.jpg");
+</script>
+#+END_HTML
 
 * More Goodies
-** TODO everywhere
-** TODO enum pattern
+** everywhere
 
+#+BEGIN_NOTES
+Before we wrap up, I wanted to talk about a couple of things that I use all the time. The first is the application of polymorphic functions.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+object Canon extends Poly1 {
+  implicit def caseFile[F <: File] = at[F](f => f.canon)
+}
+#+END_SRC
+
+. . .
+
+#+BEGIN_SRC scala
+everywhere(Canon)(... anything with a Generic form ...)
+#+END_SRC
+
+#+BEGIN_SRC scala
+
+#+END_SRC
+
+
+
+** TODO enum pattern

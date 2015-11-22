@@ -1564,3 +1564,22 @@ everywhere(Canon)(message)
 #+END_SRC
 
 ** TODO enum pattern
+
+** More...
+
+https://github.com/milessabin/shapeless/blob/shapeless-2.2.5/examples/src/main/scala/shapeless/examples
+
+* Thank you!
+
+** Bottle
+
+#+BEGIN_NOTES
+What was that about fitting into a bottle?
+#+END_NOTES
+
+#+BEGIN_HTML
+<script type="text/javascript">
+document.getElementById('bottle').setAttribute("data-background-image", "./images/bottles.jpg");
+</script>
+#+END_HTML
+

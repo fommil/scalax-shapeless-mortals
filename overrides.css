@@ -45,3 +45,7 @@ ul li ul li {
     text-align: right;
     text-shadow: 2px 2px 8px white;
 }
+
+#thank-you {
+    text-color: red;
+}

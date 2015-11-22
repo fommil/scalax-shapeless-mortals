@@ -1513,24 +1513,54 @@ document.getElementById('go').setAttribute("data-background-image", "./images/br
 
 #+BEGIN_NOTES
 Before we wrap up, I wanted to talk about a couple of things that I use all the time. The first is the application of polymorphic functions.
+
+A polymorphic function is one that can act on a polymorphic type, like a collection.
+
+This standard example shows a function that takes Sets and returns Options, regardless of what the contained type is:
 #+END_NOTES
 
 #+BEGIN_SRC scala
-object Canon extends Poly1 {
-  implicit def caseFile[F <: File] = at[F](f => f.canon)
+import poly._
+
+object choose extends (Set ~> Option) {
+  def apply[T](s : Set[T]) = s.headOption
 }
 #+END_SRC
 
 . . .
 
-#+BEGIN_SRC scala
-everywhere(Canon)(... anything with a Generic form ...)
+#+BEGIN_SRC
+scala> choose(Set(1, 2, 3))
+res0: Option[Int] = Some(1)
+
+scala> choose(Set('a', 'b', 'c'))
+res1: Option[Char] = Some(a)
 #+END_SRC
 
-#+BEGIN_SRC scala
+. . .
 
+#+BEGIN_NOTES
+For the example we've just seen, there are probably other ways of doing it so lets look at something that we can't do easily otherwise.
+
+In ENSIME, we have to canonicalize [sic] all the =File= instances that we receive over the wire, or the scala compiler can get confused.
+
+We achieved this by defining a polymorphic function that acts on =File= (and its subtypes).
+#+END_NOTES
+
+#+BEGIN_SRC scala
+object Canon extends Poly1 {
+  implicit def caseFile[F <: File] = at[F](_.getCanonicalFile)
+}
 #+END_SRC
 
+. . .
 
+#+BEGIN_NOTES
+The crazy thing is that this then works on case classes and sealed traits which contain =File= fields...
+#+END_NOTES
+
+#+BEGIN_SRC scala
+everywhere(Canon)(message)
+#+END_SRC
 
 ** TODO enum pattern

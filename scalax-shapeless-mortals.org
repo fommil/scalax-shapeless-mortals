@@ -1558,7 +1558,7 @@ The crazy thing is that this then works on case classes and sealed traits which 
 #+END_NOTES
 
 #+BEGIN_SRC scala
-everywhere(Canon)(message)
+everywhere(Canon)(List(new File(".."))) // List(File("/home"))
 #+END_SRC
 
 ** A better enum
@@ -1608,9 +1608,69 @@ def isWeekend(d: WeekDay) = d match {
 
 =Values= is in =shapeless/examples/enum.scala=
 
+** Tags
+
+#+BEGIN_NOTES
+This last thing I'm going to show is something very simple that helps me out when dealing with legacy codebases that are full of Stringly typed methods.
+
+We only need to import a very minimal amount of shapeless functionality and we define =traits= and then =tag= them to variables of the same name.
+#+END_NOTES
+
+#+BEGIN_SRC scala
+import shapeless.tag, tag.@@
+
+trait First
+val First = tag[First]
+
+trait Last
+val Last = tag[Last]
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+Now we can use this "tagging" notation on solid parameter types.
+#+END_NOTES
+
+
+#+BEGIN_SRC scala
+def hello(first: String @@ First, last: String @@ Last) = {
+  println(s"hello $first $last")
+  println(s"${first.getClass} ${first.getClass}")
+}
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+which means we'll get a compile time failure if don't use the correct types.
+#+END_NOTES
+
+
+#+BEGIN_SRC scala
+hello("Bruce", "Lee") // ZZZZZWAP!
+#+END_SRC
+
+. . .
+
+#+BEGIN_NOTES
+this is how we create tagged =String= instances, it looks just like we're instantiating value classes, but this is purely compile time.
+
+At runtime, the types are =String=!
+#+END_NOTES
+
+#+BEGIN_SRC scala
+val first = First("Bruce")
+val last = Last("Lee")
+
+hello(first, last)
+// hello Bruce Lee
+// class java.lang.String class java.lang.String
+#+END_SRC
+
 ** More...
 
-https://github.com/milessabin/shapeless/blob/shapeless-2.2.5/examples/src/main/scala/shapeless/examples
+https://github.com/milessabin/shapeless/tree/shapeless-2.2.5/examples/
 
 * Thank you!
 

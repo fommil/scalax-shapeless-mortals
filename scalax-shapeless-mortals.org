@@ -425,8 +425,8 @@ Firstly, we use the =JsonFormat= for the tail on the tail, expecting a =JsObject
 
 #+BEGIN_SRC scala
   def write(hlist: FieldType[Key, Value] :: Remaining) =
-    jft.write(hlist.tail).asJsObject +
-      (key.value -> jfh.write(hlist.head))
+    jft.write(hlist.tail).asJsObject :+
+      (key.value.name -> jfh.write(hlist.head))
 #+END_SRC
 
 . . .
@@ -440,7 +440,7 @@ We have to return an =HList= so we simply cat this =FieldType= onto the existing
 #+BEGIN_SRC scala
   def read(json: JsValue) = {
      val fields = json.asJsObject.fields
-     val head = jfh.read(fields(key.value))
+     val head = jfh.read(fields(key.value.name))
      val tail = jft.read(json)
      field[Key](head) :: tail
   }
@@ -680,10 +680,10 @@ This is kind of weird, we're not reading the type from the JSON and immediately 
 
 #+BEGIN_SRC scala
   def read(j: JsValue) =
-    if (j.asJsObject("type") == key.value)
+    if (j.asJsObject.fields("type") == JsString(key.value.name))
       Inl(field[Name](jfh.read(j)))
     else
-      Inr(jft.value.read(j))
+      Inr(jft.read(j))
 #+END_SRC
 
 . . .
@@ -699,7 +699,7 @@ And that's it!
 #+BEGIN_SRC scala
   def write(lr: FieldType[Name, Head] :+: Tail) = lr match {
     case Inl(found) =>
-      jfh.write(found).asJsObject + ("type" -> key.value)
+      jfh.write(found).asJsObject :+ ("type" -> JsString(key.value.name))
 
     case Inr(tail) =>
       jft.write(tail)
@@ -1055,7 +1055,7 @@ implicit def hListFormat[Key <: Symbol, Value, Remaining <: HList](
   key: Witness.Aux[Key],
   lazyJfh: Lazy[JsonFormat[Value]],
   lazyJft: Lazy[JsonFormat[Remaining]]
-): JsonFormat[FieldType[Key, Value] :: Remaining] = {
+): JsonFormat[FieldType[Key, Value] :: Remaining] = new JsonFormat {
   val jfh = lazyJfh.value
   val jft = lazyJft.value
   ...
@@ -1070,7 +1070,7 @@ implicit def coproductFormat[Name <: Symbol, Head, Tail <: Coproduct](
   key: Witness.Aux[Name],
   lazyJfh: Lazy[JsonFormat[Head]],
   lazyJft: Lazy[JsonFormat[Tail]]
-): JsonFormat[FieldType[Name, Head] :+: Tail] = {
+): JsonFormat[FieldType[Name, Head] :+: Tail] = new JsonFormat {
   val jfh = lazyJfh.value
   val jft = lazyJft.value
   ...
@@ -1085,7 +1085,7 @@ implicit def familyFormat[T, Repr](
   gen: LabelledGeneric.Aux[T, Repr],
   lazySg: Lazy[JsonFormat[Repr]],
   tpe: Typeable[T]
-): JsonFormat[T] = {
+): JsonFormat[T] = new JsonFormat {
   val sg = lazySg.value
 }
 #+END_SRC

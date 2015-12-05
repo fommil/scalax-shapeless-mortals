@@ -34,14 +34,6 @@ But my favourite project is ENSIME, which is an alternative development environm
   - FreeSlick
   - ENSIME core developer
 
------
-
-[[./images/morgan-stanley.jpg]]
-
-- Contracting with Morgan Stanley
-- We are hiring Scala developers!
-- Find their booth outside
-
 ** Raise your hand if...
 
 #+BEGIN_NOTES

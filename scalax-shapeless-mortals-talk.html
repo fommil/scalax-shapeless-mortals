@@ -973,10 +973,10 @@ implicitly[JsonFormat[Left[String, Int]]] <span class="co">// =&gt; familyFormat
 <li class="fragment"><a href="https://github.com/ensime/ensime-server/" class="uri">https://github.com/ensime/ensime-server/</a></li>
 <li class="fragment"><a href="https://github.com/fommil/spray-json-shapeless/" class="uri">https://github.com/fommil/spray-json-shapeless/</a></li>
 </ul>
-</section><section id="big-data-stringy-map-bdsm" class="slide level2">
-<h1>Big Data Stringy Map (BDSM)</h1>
+</section><section id="stringy-map-for-big-data" class="slide level2">
+<h1>Stringy Map for Big Data</h1>
 <aside class="notes">
-<p>We’ve all seen this perverted data structure before, it somehow manages to find its way into every large project and is almost impossible to remove.</p>
+<p>We’ve all seen this data structure before, it somehow manages to find its way into every large project and is almost impossible to remove.</p>
 <p>We’re going to try to add some type safety around it with shapeless.</p>
 </aside>
 <p><code>java.util.HashMap[String, AnyRef]</code></p>
@@ -989,7 +989,7 @@ implicitly[JsonFormat[Left[String, Int]]] <span class="co">// =&gt; familyFormat
 }</code></pre></div>
 <div class="fragment">
 <aside class="notes">
-<p>And just to make it really exciting, you can’t <strong>really</strong> put anything in the value of the stringy map, your values should only have typeclasses like this, which can turn them into java types that are really supported by the thing that consumes BDSMs.</p>
+<p>And just to make it really exciting, you can’t <strong>really</strong> put anything in the value of the stringy map, your values should only have typeclasses like this, which can turn them into java types that are really supported by the thing that consumes <code>Stringy Maps</code>.</p>
 </aside>
 <div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">trait</span> SPrimitive[V] {
   <span class="co">// e.g. Int =&gt; java.lang.Integer</span>

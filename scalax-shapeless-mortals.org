@@ -18,8 +18,6 @@ I'm a fellow of the Free Software Foundation. I believe they do really great thi
 
 My most used free software project is =netlib-java=, which I spoke about at last year's Scala eXchange. It's included in the Spark Machine Learning library.
 
-My most controversial moment was when I realised that TypeSafe had quietly closed the sources of parts of Slick. In response, I created FreeSlick to encourage a Free alternative. Sue Carter, who spoke earlier today, actually delivered on that.
-
 But my favourite project is ENSIME, which is an alternative development environment to Eclipse and IntelliJ for Scala and now Java.
 
 #+END_NOTES
@@ -31,7 +29,6 @@ But my favourite project is ENSIME, which is an alternative development environm
   - 5mil textbooks in South Africa (Siyavula)
   - FSF Fellow (they fight for BSD / Apache too!)
   - =netlib-java= (underpinning Spark ML)
-  - FreeSlick
   - ENSIME core developer
 
 ** Raise your hand if...
@@ -568,7 +565,7 @@ implicit val TeapotJsonFormat = cachedImplicit[Teapot]
 teapot.toJson // {"a": "hello", "b": 1, "c": true}
 #+END_SRC
 
-** ​ +CohList+ Coproduct
+** ​ +CoHist+ Coproduct
 
 #+BEGIN_NOTES
 But that's not all that =LabelledGeneric= can do, it also works for sealed traits...

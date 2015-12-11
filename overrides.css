@@ -30,7 +30,7 @@
 
 ol li {
     /** This is just showing off. */
-    list-style-type: lower-greek;
+    /*list-style-type: lower-greek;*/
 }
 
 ol li ul li {

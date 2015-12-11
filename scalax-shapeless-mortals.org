@@ -1263,10 +1263,10 @@ The exercises are in the =shapeless-for-mortals= repository but you also find it
 - https://github.com/ensime/ensime-server/
 - https://github.com/fommil/spray-json-shapeless/
 
-** Big Data Stringy Map (BDSM)
+** Stringy Map for Big Data
 
 #+BEGIN_NOTES
-We've all seen this perverted data structure before, it somehow manages to find its way into every large project and is almost impossible to remove.
+We've all seen this data structure before, it somehow manages to find its way into every large project and is almost impossible to remove.
 
 We're going to try to add some type safety around it with shapeless.
 #+END_NOTES
@@ -1289,7 +1289,7 @@ trait BigDataFormat[T] {
 . . .
 
 #+BEGIN_NOTES
-And just to make it really exciting, you can't *really* put anything in the value of the stringy map, your values should only have typeclasses like this, which can turn them into java types that are really supported by the thing that consumes BDSMs.
+And just to make it really exciting, you can't *really* put anything in the value of the stringy map, your values should only have typeclasses like this, which can turn them into java types that are really supported by the thing that consumes =Stringy Maps=.
 #+END_NOTES
 
 #+BEGIN_SRC scala

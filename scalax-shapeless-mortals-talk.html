@@ -481,8 +481,8 @@ generic.<span class="fu">to</span>(teapot) shouldBe hlist</code></pre></div>
 
 teapot.<span class="fu">toJson</span> <span class="co">// {&quot;a&quot;: &quot;hello&quot;, &quot;b&quot;: 1, &quot;c&quot;: true}</span></code></pre></div>
 </div>
-</section><section id="cohist-coproduct" class="slide level2">
-<h1>​ <del>CoHist</del> Coproduct</h1>
+</section><section id="cohlist-coproduct" class="slide level2">
+<h1>​ <del>CoHList</del> Coproduct</h1>
 <aside class="notes">
 <p>But that’s not all that <code>LabelledGeneric</code> can do, it also works for sealed traits…</p>
 <p>Here we create a simple sealed trait with two implementations. Remember that sealing a trait means that all the implementations are known at compile time.</p>
@@ -521,9 +521,9 @@ generic.<span class="fu">Repr</span>: FieldType[Symbol(&#39;Glass),   Glass] :+:
   <span class="kw">case</span> <span class="fu">Inr</span>(tail) =&gt; <span class="st">&quot;(nil . &quot;</span> + <span class="fu">show</span>(tail) + <span class="st">&quot;)&quot;</span>
 }
 
-<span class="fu">showCoproduct</span>(generic.<span class="fu">to</span>(<span class="fu">Glass</span>(<span class="st">&quot;foo&quot;</span>))) <span class="co">// &quot;Glass(foo)&quot;</span>
-<span class="fu">showCoproduct</span>(generic.<span class="fu">to</span>(<span class="fu">Bottle</span>(<span class="dv">99</span>)))   <span class="co">// (nil . &quot;Bottle(99)&quot;)</span>
-<span class="fu">showCoproduct</span>(generic.<span class="fu">to</span>(<span class="fu">Teapot</span>(<span class="kw">true</span>))) <span class="co">// (nil . (nil . &quot;Teapot(true)&quot;))</span></code></pre></div>
+<span class="fu">show</span>(generic.<span class="fu">to</span>(<span class="fu">Glass</span>(<span class="st">&quot;foo&quot;</span>))) <span class="co">// &quot;Glass(foo)&quot;</span>
+<span class="fu">show</span>(generic.<span class="fu">to</span>(<span class="fu">Bottle</span>(<span class="dv">99</span>)))   <span class="co">// (nil . &quot;Bottle(99)&quot;)</span>
+<span class="fu">show</span>(generic.<span class="fu">to</span>(<span class="fu">Teapot</span>(<span class="kw">true</span>))) <span class="co">// (nil . (nil . &quot;Teapot(true)&quot;))</span></code></pre></div>
 </div>
 </section><section class="slide level2">
 
@@ -1012,92 +1012,6 @@ implicitly[JsonFormat[Left[String, Int]]] <span class="co">// =&gt; familyFormat
 <ul>
 <li class="fragment">Exercise 1.2: define identity constraints using singleton types.</li>
 </ul>
-</section><section id="s-express" class="slide level2">
-<h1>S-Express</h1>
-<aside class="notes">
-<p>Let’s talk about lisp for a little bit, or more specifically, S-Expressions.</p>
-<p>For the emacs users among you, this is second nature.</p>
-<p>An S-Expression is either an atom - symbol, string, number, array, hashmap, etc - or a cons of two S-Expressions, using this parenthesis notation with a dot to separate the two parts.</p>
-</aside>
-<p><img src="file:images/sexp.png" alt="" /></p>
-<div class="fragment">
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">sealed</span> <span class="kw">trait</span> Sexp
-
-<span class="kw">case</span> <span class="kw">class</span> <span class="fu">SexpCons</span>(x: Sexp, y: Sexp) <span class="kw">extends</span> Sexp
-<span class="kw">sealed</span> <span class="kw">trait</span> SexpAtom <span class="kw">extends</span> Sexp
-
-<span class="kw">case</span> <span class="kw">class</span> <span class="fu">SexpString</span>(value: String) <span class="kw">extends</span> SexpAtom
-<span class="kw">case</span> <span class="kw">class</span> <span class="fu">SexpNumber</span>(value: BigDecimal) <span class="kw">extends</span> SexpAtom
-<span class="kw">case</span> <span class="kw">class</span> <span class="fu">SexpSymbol</span>(value: String) <span class="kw">extends</span> SexpAtom
-<span class="kw">case</span> <span class="kw">object</span> SexpNil <span class="kw">extends</span> SexpAtom
-...</code></pre></div>
-</div>
-</section><section class="slide level2">
-
-<aside class="notes">
-<p>One of the most amazing things about S-Expressions, and lisp, is that data is code and code is data.</p>
-<p>There is no real “list” data type, in the Scala sense, it’s just any structure that ends with the symbol “nil”.</p>
-<p>Lists are so common in lisps that this special syntax is introduced.</p>
-</aside>
-<p><img src="file:images/sexp-list.png" alt="" /></p>
-<div class="sourceCode"><pre class="sourceCode commonlisp"><code class="sourceCode commonlisp">(a . (b . (c . <span class="kw">nil</span>)))
-
-(a b c) <span class="co">;; list syntax</span></code></pre></div>
-</section><section class="slide level2">
-
-<aside class="notes">
-<p>And similarly, other collection types are defined by convention rather than with formal types.</p>
-<p>Here we have “data syntax”, using keywords - symbols that begin with a colon - which is really just a list of alternating keywords and values.</p>
-<p>And here we have a complex map structure where the first key is a list of numbers and the second key is a data structure.</p>
-<p>It’s these “data syntax” structures that make up the majority of the ENSIME protocol, called SWANK.</p>
-</aside>
-<p><code>data</code></p>
-<div class="sourceCode"><pre class="sourceCode commonlisp"><code class="sourceCode commonlisp">(:keyA . (valueA . (:keyB . (valueB . <span class="kw">nil</span>))))
-
-(:keyA valueA
- :keyB valueB) <span class="co">;; data syntax with keywords</span>
-
-(:file <span class="st">&quot;Foo.scala&quot;</span>
- :line <span class="dv">13</span>)
-
-<span class="co">;; complex map structure</span>
-((<span class="dv">1</span> <span class="dv">2</span> <span class="dv">3</span>) <span class="st">&quot;Foo.scala&quot;</span>
- (<span class="kw">:key</span> value) <span class="dv">13</span>)</code></pre></div>
-<div class="fragment">
-<aside class="notes">
-<p>An alternative representation is the <code>alist</code> form which is a list, but each element in the list is a key/value pair.</p>
-</aside>
-<p><code>alist</code></p>
-<div class="sourceCode"><pre class="sourceCode commonlisp"><code class="sourceCode commonlisp">((keyA . valueA) . ((keyB . valueB) . <span class="kw">nil</span>))
-
-((keyA . valueA)
- (keyB . valueB)) <span class="co">;; alist syntax</span>
-
-((file . <span class="st">&quot;Foo.scala&quot;</span>)
- (line . <span class="dv">13</span>))</code></pre></div>
-</div>
-</section><section class="slide level2">
-
-<aside class="notes">
-<p>S-Express is one of the marshalling formats used by ENSIME and was written before shapeless supported coproduct derivation.</p>
-<p>The typeclass that it uses is very similar to spray-json and looks something like this.</p>
-</aside>
-<p>vs JSON</p>
-<ul>
-<li class="fragment">JSON keys are <code>String</code></li>
-<li class="fragment">JSON maps are unordered</li>
-<li class="fragment">S-Exp naturally encodes structure</li>
-</ul>
-<div class="fragment">
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">trait</span> SexpFormat[T] {
-  <span class="kw">def</span> <span class="fu">read</span>(value: Sexp): T
-  <span class="kw">def</span> <span class="fu">write</span>(obj: T): Sexp
-}</code></pre></div>
-<ul>
-<li class="fragment">Exercise 2.1: implement <code>SexpFormat[T]</code> for sealed traits.</li>
-<li class="fragment">Exercise 2.2: customise products as “data” or “alist” forms.</li>
-</ul>
-</div>
 </section><section id="customise-jsonformat" class="slide level2">
 <h1>Customise <code>JsonFormat</code></h1>
 <aside class="notes">

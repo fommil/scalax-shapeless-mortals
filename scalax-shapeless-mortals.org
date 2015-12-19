@@ -335,7 +335,7 @@ Here we have an instance of an =HList= with =String=, =Int= and =Boolean= elemen
 #+END_NOTES
 
 #+BEGIN_SRC scala
-"hello" :: 13L :: true :: HNil
+"hello" :: 13 :: true :: HNil
                               : String :: Int :: Boolean :: HNil
 #+END_SRC
 
@@ -350,7 +350,7 @@ It's also a subtype of the unlabelled =HList= above.
 #+END_NOTES
 
 #+BEGIN_SRC scala
-('a ->> "hello") :: ('b ->> 13L) :: ('c ->> true) :: HNil
+('a ->> "hello") :: ('b ->> 13) :: ('c ->> true) :: HNil
                               : FieldType[Symbol('a), String] ::
                                 FieldType[Symbol('b), Int] ::
                                 FieldType[Symbol('c), Boolean] ::
@@ -451,7 +451,7 @@ val f = implicitly[JsonFormat[
           FieldType[Symbol('c), Boolean] ::
           HNil]]
 
-val teapot = ('a ->> "hello") :: ('b ->> 13L) :: ('c ->> true) :: HNil
+val teapot = ('a ->> "hello") :: ('b ->> 13) :: ('c ->> true) :: HNil
 val expected = "{'a': 'hello', 'b': 13, 'c': true}".parseJson
 
 f.write(teapot) shouldBe expected
@@ -560,7 +560,7 @@ And speaking of caching, we can use another little shapeless feature called =cac
 #+END_NOTES
 
 #+BEGIN_SRC scala
-implicit val TeapotJsonFormat = cachedImplicit[Teapot]
+implicit val TeapotJsonFormat: JsonFormat[Teapot] = cachedImplicit
 
 teapot.toJson // {"a": "hello", "b": 1, "c": true}
 #+END_SRC

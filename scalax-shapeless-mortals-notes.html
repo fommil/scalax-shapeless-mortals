@@ -286,7 +286,7 @@ field[Symbol(&#39;c)](<span class="kw">true</span>)  : FieldType[Symbol(&#39;c),
 <p>This is basically exactly the same data structure as a normal list, except each element type can be different and both the types of the elements and the size of the list are known at compile time.</p>
 <p>Here we have an instance of an <code>HList</code> with <code>String</code>, <code>Int</code> and <code>Boolean</code> elements, which has type <code>String :: Int :: Boolean :: HNil</code>. You’ll note that the type signature is extremely verbose, but contains everything that you’d want. The syntax for constructing the instance is almost identical to a normal <code>List</code>.</p>
 </div>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="st">&quot;hello&quot;</span> :: 13L :: <span class="kw">true</span> :: HNil
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="st">&quot;hello&quot;</span> :: <span class="dv">13</span> :: <span class="kw">true</span> :: HNil
                               : String :: Int :: Boolean :: HNil</code></pre></div>
 <p>. . .</p>
 <div class="notes">
@@ -294,7 +294,7 @@ field[Symbol(&#39;c)](<span class="kw">true</span>)  : FieldType[Symbol(&#39;c),
 <p>This is now starting to look more like the contents of a case class, right?</p>
 <p>It’s also a subtype of the unlabelled <code>HList</code> above.</p>
 </div>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala">(&#39;a -&gt;&gt; <span class="st">&quot;hello&quot;</span>) :: (&#39;b -&gt;&gt; 13L) :: (&#39;c -&gt;&gt; <span class="kw">true</span>) :: HNil
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala">(&#39;a -&gt;&gt; <span class="st">&quot;hello&quot;</span>) :: (&#39;b -&gt;&gt; <span class="dv">13</span>) :: (&#39;c -&gt;&gt; <span class="kw">true</span>) :: HNil
                               : FieldType[Symbol(&#39;a), String] ::
                                 FieldType[Symbol(&#39;b), Int] ::
                                 FieldType[Symbol(&#39;c), Boolean] ::
@@ -358,7 +358,7 @@ field[Symbol(&#39;c)](<span class="kw">true</span>)  : FieldType[Symbol(&#39;c),
           FieldType[Symbol(&#39;c), Boolean] ::
           HNil]]
 
-<span class="kw">val</span> teapot = (&#39;a -&gt;&gt; <span class="st">&quot;hello&quot;</span>) :: (&#39;b -&gt;&gt; 13L) :: (&#39;c -&gt;&gt; <span class="kw">true</span>) :: HNil
+<span class="kw">val</span> teapot = (&#39;a -&gt;&gt; <span class="st">&quot;hello&quot;</span>) :: (&#39;b -&gt;&gt; <span class="dv">13</span>) :: (&#39;c -&gt;&gt; <span class="kw">true</span>) :: HNil
 <span class="kw">val</span> expected = <span class="st">&quot;{&#39;a&#39;: &#39;hello&#39;, &#39;b&#39;: 13, &#39;c&#39;: true}&quot;</span>.<span class="fu">parseJson</span>
 
 f.<span class="fu">write</span>(teapot) shouldBe expected
@@ -429,7 +429,7 @@ generic.<span class="fu">to</span>(teapot) shouldBe hlist</code></pre></div>
 <div class="notes">
 <p>And speaking of caching, we can use another little shapeless feature called <code>cachedImplicit</code> to obtain and cache an implicit value, thereby avoiding needless object creation. Otherwise, this method is called, and all its dependencies calculated afresh, every time it is invoked.</p>
 </div>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">implicit</span> <span class="kw">val</span> TeapotJsonFormat = cachedImplicit[Teapot]
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">implicit</span> <span class="kw">val</span> TeapotJsonFormat: JsonFormat[Teapot] = cachedImplicit
 
 teapot.<span class="fu">toJson</span> <span class="co">// {&quot;a&quot;: &quot;hello&quot;, &quot;b&quot;: 1, &quot;c&quot;: true}</span></code></pre></div>
 <h2 id="cohist-coproduct">​ <del>CoHist</del> Coproduct</h2>
